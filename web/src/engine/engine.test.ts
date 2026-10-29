@@ -208,14 +208,12 @@ describe("Dev Tools requests", () => {
     expect(result.requests.map((r) => [r.kind, r.expected])).toEqual([["noApt", 9], ["noApt", 9]]);
   });
 
-  it("renders a commented snippet ready to paste into Dev Tools", () => {
+  it("renders a dry-run snippet that changes nothing", () => {
     const result = run(fixtureDataset(), fixtureProfile({ groups: ["G0003"] }), DATE);
-    expect(result.snippet).toBe(`# apt2rule — profile "Test profile"
-# Elastic prebuilt rules 9.5.9 (stack 9.5), ATT&CK 19.1, generated 2026-10-29
+    expect(result.snippets.dryRun).toBe(`# apt2rule DRY RUN: changes nothing
+# Profile "Test profile" · Elastic prebuilt rules 9.5.9 (stack 9.5) · ATT&CK 19.1 · generated 2026-10-29
 # Before running: install all Elastic prebuilt rules in Kibana (Rules > Add Elastic rules). They install disabled.
-# These requests only add tags. They do not change, enable or disable any rule.
-
-# ===== Step 1: dry run (changes nothing; compare the counts) =====
+# Each response lists the rules Kibana would tag. Compare the counts with the comments below.
 
 # Tag "apt2rule:2026-10-29" on selected rules: expect 1 rule
 # Profile "Test profile" · Elastic 9.5.9 · ATT&CK 19.1
@@ -248,8 +246,15 @@ POST ${BULK}?dry_run=true
     }
   ]
 }
+`);
+  });
 
-# ===== Step 2: apply =====
+  it("renders a production snippet that only adds tags", () => {
+    const result = run(fixtureDataset(), fixtureProfile({ groups: ["G0003"] }), DATE);
+    expect(result.snippets.apply).toBe(`# apt2rule PRODUCTION: adds tags
+# Profile "Test profile" · Elastic prebuilt rules 9.5.9 (stack 9.5) · ATT&CK 19.1 · generated 2026-10-29
+# Before running: install all Elastic prebuilt rules in Kibana (Rules > Add Elastic rules) and run the dry run first.
+# These requests only add tags. They do not change, enable or disable any rule.
 
 # Tag "apt2rule:2026-10-29" on selected rules: expect 1 rule
 # Profile "Test profile" · Elastic 9.5.9 · ATT&CK 19.1

@@ -3,41 +3,85 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
     <title>apt2rule</title>
     <meta name="description" content="Turn the APT groups from your threat analysis into tags on the matching Elastic prebuilt detection rules." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 4 7v8c0 7.5 5.1 13.4 12 15 6.9-1.6 12-7.5 12-15V7z' fill='%230b141c' stroke='%233dd6c4' stroke-width='2'/%3E%3Ccircle cx='16' cy='15' r='4.5' fill='none' stroke='%233dd6c4' stroke-width='2'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="./src/style.css" />
   </head>
   <body>
-    <header>
-      <h1>apt2rule</h1>
+    <header class="masthead">
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M16 2 4 7v8c0 7.5 5.1 13.4 12 15 6.9-1.6 12-7.5 12-15V7z" />
+          <circle cx="16" cy="15" r="4.5" />
+          <path d="M16 7.5v3M16 19.5v3M8.5 15h3M20.5 15h3" />
+        </svg>
+        <div>
+          <h1>apt2rule</h1>
+          <p class="tagline">Threat profile → Elastic detection coverage</p>
+        </div>
+      </div>
+      <ul class="badges" aria-label="Properties">
+        <li>MITRE ATT&amp;CK®</li>
+        <li>Elastic Security</li>
+        <li>Runs in your browser</li>
+      </ul>
       <p class="lede">
-        Pick the APT groups from your threat analysis. apt2rule finds the ATT&amp;CK techniques they use and the Elastic
-        prebuilt detection rules that cover them, and gives you a Kibana Dev Tools snippet that <strong>only adds tags</strong>.
-        Then filter by tag in Kibana and bulk-enable or bulk-disable. Everything runs in your browser; nothing you select
-        leaves it.
+        Select the APT groups from your threat analysis. apt2rule maps the ATT&amp;CK techniques they use to Elastic
+        prebuilt detection rules and gives you a Kibana Dev Tools snippet that <strong>only adds tags</strong>. Filter by
+        tag in Kibana to bulk-enable or bulk-disable. Nothing you select leaves your browser.
       </p>
+      <aside class="disclaimer" role="note">
+        <strong>Disclaimer.</strong> This product is fully vibe coded (built with AI assistance) and comes with no
+        guarantees. Always run the dry run and review the rules before enabling or disabling anything in your cluster.
+      </aside>
     </header>
 
     <main>
-      <section id="profile" aria-labelledby="profile-h">
-        <h2 id="profile-h">1. Profile</h2>
+      <section class="panel" aria-labelledby="profile-h">
+        <h2 id="profile-h"><span class="step">01</span> Profile and ruleset</h2>
         <div class="row">
           <label>Profile <select id="profile-select"></select></label>
           <label>Name <input id="profile-name" type="text" autocomplete="off" /></label>
-          <button id="profile-new" type="button">New</button>
-          <button id="profile-export" type="button">Export JSON</button>
-          <label class="button">Import JSON <input id="profile-import" type="file" accept="application/json,.json" hidden /></label>
-          <button id="profile-delete" type="button" class="danger">Delete</button>
+          <div class="actions">
+            <button id="profile-new" type="button" class="ghost">New</button>
+            <button id="profile-export" type="button" class="ghost">Export JSON</button>
+            <label class="button ghost">Import JSON <input id="profile-import" type="file" accept="application/json,.json" hidden /></label>
+            <button id="profile-delete" type="button" class="danger">Delete</button>
+          </div>
         </div>
         <p class="hint">Profiles are saved in this browser only. Export them to back them up or share them.</p>
         <div class="row">
           <label>Elastic prebuilt ruleset <select id="ruleset"></select></label>
-          <span id="ruleset-info" class="hint"></span>
+          <span id="ruleset-info" class="mono hint"></span>
         </div>
+        <details class="help">
+          <summary>Which ruleset version is installed in my Kibana?</summary>
+          <ol>
+            <li>
+              In Kibana, open <strong>Management → Integrations</strong>, search for
+              <strong>Prebuilt Security Detection Rules</strong> and open its <strong>Settings</strong> tab. It shows the
+              installed version, e.g. <code>9.5.9</code>.
+            </li>
+            <li>
+              Or run this in <strong>Dev Tools</strong> and look for <code>installationInfo.version</code> in the response
+              (older Kibana: <code>savedObject.attributes.version</code>):
+              <div class="inline-code">
+                <pre id="fleet-request" class="code">GET kbn:/api/fleet/epm/packages/security_detection_engine</pre>
+                <button id="copy-fleet" type="button" class="ghost">Copy</button>
+              </div>
+            </li>
+          </ol>
+          <p class="hint">
+            apt2rule offers the newest ruleset for each Kibana version. If yours is an older patch, update the prebuilt rules in
+            Kibana (Rules → Update) or expect small differences in the dry-run counts.
+          </p>
+        </details>
       </section>
 
-      <section id="groups" aria-labelledby="groups-h">
-        <h2 id="groups-h">2. APT groups</h2>
+      <section class="panel" aria-labelledby="groups-h">
+        <h2 id="groups-h"><span class="step">02</span> APT groups</h2>
         <div class="split">
           <div>
             <label>Search name or alias <input id="group-search" type="search" placeholder="e.g. Cozy Bear, APT28, Lazarus" autocomplete="off" /></label>
@@ -51,22 +95,22 @@
             <p id="group-paste-result" class="hint" role="status"></p>
           </div>
         </div>
-        <h3>Selected (<span id="group-count">0</span>)</h3>
+        <h3>Selected <span class="count" id="group-count">0</span></h3>
         <ul id="group-selected" class="chips"></ul>
       </section>
 
-      <section id="techniques" aria-labelledby="techniques-h">
-        <h2 id="techniques-h">3. Techniques</h2>
+      <section class="panel" aria-labelledby="techniques-h">
+        <h2 id="techniques-h"><span class="step">03</span> Techniques</h2>
         <div class="row">
           <label class="check"><input id="include-software" type="checkbox" /> Include techniques from the groups' software</label>
-          <label>Used by at least <input id="min-groups" type="range" min="1" max="1" value="1" /> <output id="min-groups-out">1</output> selected group(s)</label>
+          <label class="slider">Used by at least <span><input id="min-groups" type="range" min="1" max="1" value="1" /> <output id="min-groups-out">1</output></span> selected group(s)</label>
         </div>
         <p class="hint">Untick a technique to exclude it, or tick one below the threshold to include it anyway.</p>
         <div class="table-wrap"><table id="technique-table"></table></div>
       </section>
 
-      <section id="filters" aria-labelledby="filters-h">
-        <h2 id="filters-h">4. Filter rules by tag</h2>
+      <section class="panel" aria-labelledby="filters-h">
+        <h2 id="filters-h"><span class="step">04</span> Filter rules by tag</h2>
         <div class="row">
           <label class="check"><input id="include-bb" type="checkbox" /> Include building block rules</label>
           <label class="check"><input id="include-ml" type="checkbox" /> Include machine learning rules (need their ML job)</label>
@@ -84,47 +128,57 @@
         <div id="tag-categories"></div>
       </section>
 
-      <section id="output" aria-labelledby="output-h">
-        <h2 id="output-h">5. Output</h2>
+      <section class="panel output" aria-labelledby="output-h">
+        <h2 id="output-h"><span class="step">05</span> Output</h2>
         <ul id="warnings" class="warnings"></ul>
-        <p id="summary"></p>
+        <div id="summary" class="stats"></div>
         <div class="tabs" role="tablist">
           <button role="tab" data-tab="snippet" aria-selected="true">Dev Tools snippet</button>
           <button role="tab" data-tab="report" aria-selected="false">Coverage report</button>
           <button role="tab" data-tab="ids" aria-selected="false">rule_id list</button>
         </div>
         <div data-panel="snippet">
-          <ol class="steps">
-            <li>In Kibana, install all Elastic prebuilt rules (Rules &gt; Add Elastic rules). They install disabled. Make sure the ruleset version above is the one installed: only rules in that version get tagged.</li>
-            <li>Open Dev Tools, paste the snippet and run the <em>dry run</em> requests. Compare the counts with the comments.</li>
-            <li>Run the <em>apply</em> requests. They only add tags; no rule is changed, enabled or disabled.</li>
-            <li>In the rules table, filter by tag and bulk-enable (<code id="tag-selected"></code>) or bulk-disable (<code id="tag-noapt"></code>) after review.</li>
-          </ol>
-          <p class="hint">Tagging a prebuilt rule marks it as customised in Kibana, and rule upgrades may drop the tags. Re-run apt2rule after upgrading rules.</p>
-          <div class="row"><button id="copy-snippet" type="button">Copy whole snippet</button><button id="download-snippet" type="button">Download</button></div>
-          <p class="hint">Or copy one request at a time:</p>
-          <ol id="requests" class="requests"></ol>
+          <div class="row">
+            <div class="segmented" role="group" aria-label="Snippet">
+              <button type="button" data-mode="dryRun" aria-pressed="true">Dry run</button>
+              <button type="button" data-mode="apply" aria-pressed="false">Production</button>
+            </div>
+            <button id="copy-snippet" type="button">Copy snippet</button>
+            <button id="download-snippet" type="button" class="ghost">Download</button>
+          </div>
+          <p class="mode-note" data-mode-note="dryRun">
+            <strong>Dry run</strong> changes nothing. Paste it into Kibana Dev Tools and compare each response's count with the
+            comments. Install all Elastic prebuilt rules first (Rules → Add Elastic rules); they install disabled.
+          </p>
+          <p class="mode-note production" data-mode-note="apply" hidden>
+            <strong>Production</strong> adds the tags. It never changes, enables or disables a rule. Afterwards, filter the
+            rules table on <code id="tag-selected"></code> to bulk-enable, and review <code id="tag-noapt"></code> to bulk-disable.
+            Tagged prebuilt rules count as customised in Kibana, and rule upgrades may drop the tags: re-run after upgrading.
+          </p>
           <pre id="snippet" class="code"></pre>
         </div>
         <div data-panel="report" hidden>
-          <div class="row"><button id="download-md" type="button">Download Markdown</button><button id="download-csv" type="button">Download CSV</button></div>
+          <div class="row"><button id="download-md" type="button">Download Markdown</button><button id="download-csv" type="button" class="ghost">Download CSV</button></div>
           <pre id="report" class="code"></pre>
         </div>
         <div data-panel="ids" hidden>
-          <div class="row"><button id="copy-ids" type="button">Copy</button><button id="download-ids" type="button">Download</button></div>
+          <div class="row"><button id="copy-ids" type="button">Copy</button><button id="download-ids" type="button" class="ghost">Download</button></div>
           <pre id="ids" class="code"></pre>
         </div>
       </section>
     </main>
 
     <footer>
+      <p class="disclaimer-footer">
+        Fully vibe coded, no guarantees: use at your own risk and always verify in your own cluster.
+      </p>
       <p>
         Group and technique data: <a href="https://attack.mitre.org/">MITRE ATT&amp;CK®</a>, © The MITRE Corporation, used
         under the <a href="https://attack.mitre.org/resources/legal-and-branding/terms-of-use/">ATT&amp;CK terms of use</a>.
         Rule metadata: <a href="https://github.com/elastic/detection-rules">Elastic prebuilt detection rules</a>, Elastic
         License 2.0. apt2rule is not affiliated with or endorsed by MITRE or Elastic.
-        <span id="built-at"></span> · <a href="https://github.com/0luc/apt2rule">Source (MIT)</a>
       </p>
+      <p class="mono"><span id="built-at"></span> · <a href="https://github.com/0luc/apt2rule">source (MIT)</a></p>
     </footer>
     <script type="module" src="./src/main.ts"></script>
   </body>

@@ -1,10 +1,9 @@
 import { buildCsv, buildMarkdown, ruleIdList, type ReportInput } from "./report";
-import { buildRequests, DEFAULT_CHUNK_SIZE, renderSnippet, tagNames } from "./snippet";
+import { buildRequests, DEFAULT_CHUNK_SIZE, renderSnippets, tagNames } from "./snippet";
 import type { Dataset, Group, Profile, Provenance, Result, Rule, RunOptions, TechniqueRow } from "./types";
 
 export type * from "./types";
 export { techniqueStatus } from "./report";
-export { renderRequest } from "./snippet";
 
 export function run(dataset: Dataset, profile: Profile, date: string, options: RunOptions = {}): Result {
   const { groups, overrides, warnings } = resolveProfile(dataset, profile);
@@ -78,7 +77,7 @@ export function run(dataset: Dataset, profile: Profile, date: string, options: R
     noApt,
     tags,
     requests,
-    snippet: renderSnippet(requests, dataset, profile, date),
+    snippets: renderSnippets(requests, dataset, profile, date),
     report: { markdown: buildMarkdown(report), csv: buildCsv(report) },
     ruleIdList: ruleIdList(selected),
   };

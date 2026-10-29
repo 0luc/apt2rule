@@ -4,11 +4,13 @@
 
 Turn the APT groups from your threat analysis into tags on the matching Elastic prebuilt detection rules.
 
+> **Disclaimer:** apt2rule is fully vibe coded (built with AI assistance) and comes with no guarantees. Always run the dry run and review the rules before enabling or disabling anything in your cluster.
+
 1. Pick the Elastic prebuilt ruleset version that matches your stack.
 2. Select the MITRE ATT&CK groups relevant to your organisation (search by name or alias, or paste a list).
 3. Narrow the techniques: see how many of your groups use each one, set a minimum, tick techniques in or out.
 4. Optionally filter the rules on their Kibana tags (`Data Source: Elastic Defend`, `OS: Linux`, …). Within a tag category any ticked tag matches; across categories all must match.
-5. Copy the Kibana Dev Tools snippet. It **only adds tags**:
+5. Copy the **Dry run** Kibana Dev Tools snippet and check the counts, then the **Production** snippet. It **only adds tags**:
    - `apt2rule:<date>` on the rules that cover your groups' techniques
    - `apt2rule(no-APT):<date>` on every other rule in the ruleset
    - rules that match a technique but are removed by your tag filter get no tag; the coverage report lists them.
@@ -19,8 +21,8 @@ Everything runs in your browser. Profiles are stored in your browser's local sto
 ## Before you run the snippet
 
 - **Install all Elastic prebuilt rules** in Kibana first (Rules > Add Elastic rules). They install disabled. Kibana can only tag rules that are installed.
-- Choose the ruleset version that is installed in your cluster. Only rules in that version are tagged.
-- Always run the **dry run** requests first and compare the counts with the comments in the snippet.
+- Choose the ruleset version that is installed in your cluster (Management → Integrations → Prebuilt Security Detection Rules → Settings, or `GET kbn:/api/fleet/epm/packages/security_detection_engine` in Dev Tools). Only rules in that version are tagged.
+- Always run the **Dry run** snippet first and compare the counts with the comments in it.
 - Tagging prebuilt rules needs Elastic's *prebuilt rule customization* (Kibana 8.18 / 9.0+, Enterprise licence). A tagged prebuilt rule counts as **customised**; when Elastic upgrades it, the upgrade may drop your tags. Re-run apt2rule after upgrading rules.
 
 ## How it works

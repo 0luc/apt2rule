@@ -73,7 +73,7 @@ export interface Result {
   /** Kibana Dev Tools requests: every dry run first, then every apply. */
   requests: BulkTagRequest[];
   /** The requests rendered as text to paste into Kibana Dev Tools. */
-  snippet: string;
+  snippets: { dryRun: string; apply: string };
   report: { markdown: string; csv: string };
   ruleIdList: string;
 }

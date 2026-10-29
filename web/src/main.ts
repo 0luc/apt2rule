@@ -1,4 +1,4 @@
-import { renderRequest, run, tagCategory, techniqueStatus, type Dataset, type Group, type Profile, type Result } from "./engine";
+import { run, tagCategory, techniqueStatus, type Dataset, type Group, type Profile, type Result } from "./engine";
 import { loadProfiles, newProfile, parseProfile, saveProfiles } from "./profiles";
 
 interface IndexFile {
@@ -18,6 +18,7 @@ const state = {
   tagSearch: "",
   openCategories: new Set<string>(["Data Source", "OS"]),
   tab: "snippet",
+  snippetMode: "dryRun" as "dryRun" | "apply",
   result: null as Result | null,
 };
 
@@ -134,22 +135,19 @@ function render() {
 
   // output
   $("warnings").innerHTML = result.warnings.map((w) => `<li>${esc(w)}</li>`).join("");
+  const stat = (n: number, label: string, tag: string, kind: string) =>
+    `<div class="stat ${kind}"><span class="stat-n">${n}</span><span class="stat-label">${label}</span>${tag ? `<code>${esc(tag)}</code>` : ""}</div>`;
   $("summary").innerHTML =
-    `<strong>${result.selected.length}</strong> rules to tag <code>${esc(result.tags.selected)}</code>, ` +
-    `<strong>${result.noApt.length}</strong> other rules to tag <code>${esc(result.tags.noApt)}</code>, ` +
-    `<strong>${result.filtered.length}</strong> matching rules removed by the tag filter (no tag).`;
+    stat(result.selected.length, "rules to enable", result.tags.selected, "stat-enable") +
+    stat(result.noApt.length, "other rules (review to disable)", result.tags.noApt, "stat-disable") +
+    stat(result.filtered.length, "matching rules removed by tag filter", "no tag", "stat-filtered");
   $("tag-selected").textContent = result.tags.selected;
   $("tag-noapt").textContent = result.tags.noApt;
-  $("snippet").textContent = result.snippet;
-  $("requests").innerHTML = result.requests
-    .map((request, i) => {
-      const step = request.dryRun ? "Dry run" : "Apply";
-      const what = request.kind === "selected" ? result.tags.selected : result.tags.noApt;
-      const part = request.parts > 1 ? ` (${request.part}/${request.parts})` : "";
-      return `<li><span>${step}: <code>${esc(what)}</code>${part}, ${request.expected} rules</span>
-        <button type="button" data-copy-request="${i}">Copy</button></li>`;
-    })
-    .join("");
+  $("snippet").textContent = result.snippets[state.snippetMode];
+  for (const button of document.querySelectorAll<HTMLButtonElement>("[data-mode]")) {
+    button.setAttribute("aria-pressed", String(button.dataset.mode === state.snippetMode));
+  }
+  for (const note of document.querySelectorAll<HTMLElement>("[data-mode-note]")) note.hidden = note.dataset.modeNote !== state.snippetMode;
   $("report").textContent = result.report.markdown;
   $("ids").textContent = result.ruleIdList || "(no rules selected)";
   for (const tab of document.querySelectorAll<HTMLButtonElement>("[data-tab]")) {
@@ -298,11 +296,11 @@ function bind() {
     render();
   });
   document.addEventListener("click", (e) => {
-    const target = (e.target as HTMLElement).closest<HTMLElement>("[data-add-group],[data-remove-group],[data-tab],[data-copy-request]");
+    const target = (e.target as HTMLElement).closest<HTMLElement>("[data-add-group],[data-remove-group],[data-tab],[data-mode]");
     if (!target) return;
-    if (target.dataset.copyRequest) {
-      const request = state.result!.requests[Number(target.dataset.copyRequest)]!;
-      return void copy(renderRequest(request, state.dataset!, profile()), target as HTMLButtonElement);
+    if (target.dataset.mode) {
+      state.snippetMode = target.dataset.mode === "apply" ? "apply" : "dryRun";
+      return render();
     }
     const p = profile();
     if (target.dataset.addGroup) {
@@ -384,9 +382,13 @@ function bind() {
   });
 
   const base = () => `apt2rule-${slug(profile().name)}-${today()}`;
-  $("copy-snippet").addEventListener("click", (e) => copy(state.result!.snippet, e.target as HTMLButtonElement));
+  const snippet = () => state.result!.snippets[state.snippetMode];
+  $("copy-snippet").addEventListener("click", (e) => copy(snippet(), e.target as HTMLButtonElement));
+  $("copy-fleet").addEventListener("click", (e) => copy($("fleet-request").textContent ?? "", e.target as HTMLButtonElement));
   $("copy-ids").addEventListener("click", (e) => copy(state.result!.ruleIdList, e.target as HTMLButtonElement));
-  $("download-snippet").addEventListener("click", () => download(`${base()}-devtools.txt`, state.result!.snippet, "text/plain"));
+  $("download-snippet").addEventListener("click", () =>
+    download(`${base()}-${state.snippetMode === "apply" ? "production" : "dry-run"}.txt`, snippet(), "text/plain"),
+  );
   $("download-md").addEventListener("click", () => download(`${base()}-report.md`, state.result!.report.markdown, "text/markdown"));
   $("download-csv").addEventListener("click", () => download(`${base()}-report.csv`, state.result!.report.csv, "text/csv"));
   $("download-ids").addEventListener("click", () => download(`${base()}-rule-ids.txt`, state.result!.ruleIdList, "text/plain"));

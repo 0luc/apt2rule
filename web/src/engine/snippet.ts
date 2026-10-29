@@ -33,25 +33,28 @@ export function buildRequests(selectedIds: string[], noAptIds: string[], date: s
   );
 }
 
-export function renderSnippet(requests: BulkTagRequest[], dataset: Dataset, profile: Profile, date: string): string {
-  const lines = [
-    `# apt2rule — profile ${JSON.stringify(profile.name)}`,
-    `# Elastic prebuilt rules ${dataset.ruleset.packageVersion} (stack ${dataset.ruleset.stackMinor}), ATT&CK ${dataset.attack.version}, generated ${date}`,
-    "# Before running: install all Elastic prebuilt rules in Kibana (Rules > Add Elastic rules). They install disabled.",
-    "# These requests only add tags. They do not change, enable or disable any rule.",
-    "",
-  ];
-  const steps = [
-    { dryRun: true, title: "Step 1: dry run (changes nothing; compare the counts)" },
-    { dryRun: false, title: "Step 2: apply" },
-  ];
-  for (const step of steps) {
-    lines.push(`# ===== ${step.title} =====`, "");
-    for (const request of requests.filter((r) => r.dryRun === step.dryRun)) {
-      lines.push(renderRequest(request, dataset, profile), "");
-    }
-  }
-  return lines.join("\n");
+/** The dry-run and production snippets, each ready to paste into Kibana Dev Tools. */
+export function renderSnippets(requests: BulkTagRequest[], dataset: Dataset, profile: Profile, date: string) {
+  const context =
+    `# Profile ${JSON.stringify(profile.name)} · Elastic prebuilt rules ${dataset.ruleset.packageVersion} ` +
+    `(stack ${dataset.ruleset.stackMinor}) · ATT&CK ${dataset.attack.version} · generated ${date}`;
+  const install = "# Before running: install all Elastic prebuilt rules in Kibana (Rules > Add Elastic rules)";
+  const render = (dryRun: boolean, header: string[]) =>
+    [...header, "", ...requests.filter((r) => r.dryRun === dryRun).flatMap((r) => [renderRequest(r, dataset, profile), ""])].join("\n");
+  return {
+    dryRun: render(true, [
+      "# apt2rule DRY RUN: changes nothing",
+      context,
+      `${install}. They install disabled.`,
+      "# Each response lists the rules Kibana would tag. Compare the counts with the comments below.",
+    ]),
+    apply: render(false, [
+      "# apt2rule PRODUCTION: adds tags",
+      context,
+      `${install} and run the dry run first.`,
+      "# These requests only add tags. They do not change, enable or disable any rule.",
+    ]),
+  };
 }
 
 /** One request as Dev Tools text, with a comment saying what it does and where it comes from. */
