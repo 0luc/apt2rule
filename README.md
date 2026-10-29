@@ -61,7 +61,7 @@ Offline / air-gapped: run `npm run build` after building the data, copy `web/dis
 
 ## Verified on a real cluster
 
-Checked against a Kibana 9.x Enterprise cluster (dry run and production):
+Checked against a real Kibana cluster (dry run and production):
 
 - [x] `alert.attributes.params.ruleId` selects rules by `rule_id` in `_bulk_action` queries.
 - [x] `_bulk_action` with `action: edit` / `add_tags` and a `query` works on prebuilt rules, in Dev Tools with the `kbn:` prefix.
