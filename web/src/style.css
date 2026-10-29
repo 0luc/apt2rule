@@ -1,0 +1,132 @@
+:root {
+  --bg: #fbfbfa;
+  --surface: #ffffff;
+  --text: #1d1d1f;
+  --muted: #5f6368;
+  --border: #d9d9d6;
+  --accent: #0b6e4f;
+  --accent-text: #ffffff;
+  --warn-bg: #fff4d6;
+  --warn-text: #6b4e00;
+  --danger: #b3261e;
+  --code-bg: #f3f3f1;
+  color-scheme: light;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #151716;
+    --surface: #1d201f;
+    --text: #e8e8e6;
+    --muted: #a3a8a6;
+    --border: #3a3e3c;
+    --accent: #4fc39a;
+    --accent-text: #0d1f18;
+    --warn-bg: #3a3014;
+    --warn-text: #f2d48a;
+    --danger: #f2948e;
+    --code-bg: #232625;
+    color-scheme: dark;
+  }
+}
+
+body {
+  margin: 0 auto;
+  max-width: 72rem;
+  padding: 1.5rem 1rem 3rem;
+  background: var(--bg);
+  color: var(--text);
+}
+
+h1 { margin: 0 0 0.25rem; font-size: 1.8rem; }
+h2 { font-size: 1.15rem; margin: 0 0 0.75rem; }
+h3 { font-size: 1rem; margin: 1rem 0 0.5rem; }
+a { color: var(--accent); }
+.lede { max-width: 50rem; color: var(--muted); }
+
+section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin: 1rem 0;
+}
+
+.row { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center; margin: 0.5rem 0; }
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 1rem; }
+label { display: inline-flex; flex-direction: column; gap: 0.25rem; font-size: 0.9rem; }
+label.check { flex-direction: row; align-items: center; gap: 0.4rem; }
+.split label { display: flex; }
+.hint { color: var(--muted); font-size: 0.85rem; margin: 0.25rem 0; }
+
+input[type="text"], input[type="search"], select, textarea {
+  font: inherit;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  max-width: 100%;
+}
+textarea { width: 100%; box-sizing: border-box; }
+
+button, label.button {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--accent-text);
+  cursor: pointer;
+  flex-direction: row;
+}
+button.secondary, .results button, .chips button, .tabs button {
+  background: transparent;
+  color: var(--accent);
+}
+button.danger { background: transparent; color: var(--danger); border-color: var(--danger); }
+
+.results { list-style: none; padding: 0; margin: 0.5rem 0; max-height: 22rem; overflow-y: auto; }
+.results li { padding: 0.5rem 0; border-bottom: 1px solid var(--border); display: flex; gap: 0.75rem; align-items: flex-start; }
+.results .meta { flex: 1; min-width: 0; }
+.results .aliases, .results .desc { color: var(--muted); font-size: 0.85rem; }
+
+.chips { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.chips li { border: 1px solid var(--border); border-radius: 999px; padding: 0.15rem 0.3rem 0.15rem 0.75rem; display: flex; gap: 0.4rem; align-items: center; }
+.chips button { border: none; padding: 0 0.4rem; }
+
+.table-wrap { overflow-x: auto; max-height: 32rem; overflow-y: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+th, td { text-align: left; padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { position: sticky; top: 0; background: var(--surface); }
+tr.excluded td { color: var(--muted); }
+.status-covered { color: var(--accent); }
+.status-gap { color: var(--danger); }
+
+.checklist { list-style: none; padding: 0; columns: 16rem; }
+.checklist li { break-inside: avoid; }
+
+.warnings { list-style: none; padding: 0; }
+.warnings li { background: var(--warn-bg); color: var(--warn-text); padding: 0.4rem 0.7rem; border-radius: 6px; margin: 0.3rem 0; }
+
+.tabs { display: flex; gap: 0.25rem; flex-wrap: wrap; margin: 0.75rem 0; }
+.tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-text); }
+.steps { padding-left: 1.25rem; }
+.requests { padding-left: 1.25rem; }
+.requests li { margin: 0.3rem 0; }
+.requests li span { margin-right: 0.5rem; }
+
+.code {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem;
+  overflow: auto;
+  max-height: 32rem;
+  font-size: 0.8rem;
+}
+
+footer { color: var(--muted); font-size: 0.8rem; margin-top: 2rem; }

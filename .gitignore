@@ -1,0 +1,8 @@
+node_modules/
+web/dist/
+web/public/data/
+pipeline/.venv/
+pipeline/.cache/
+__pycache__/
+*.pyc
+.pytest_cache/

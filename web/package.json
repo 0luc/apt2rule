@@ -1,0 +1,20 @@
+{
+  "name": "apt2rule-web",
+  "version": "1.0.0",
+  "description": "apt2rule static site",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "test": "vitest run",
+    "typecheck": "tsc"
+  },
+  "license": "MIT",
+  "type": "module",
+  "devDependencies": {
+    "ajv": "8.20.0",
+    "typescript": "5.9.3",
+    "vite": "7.3.7",
+    "vitest": "3.2.7"
+  },
+  "private": true
+}

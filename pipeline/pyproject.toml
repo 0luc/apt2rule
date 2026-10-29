@@ -1,0 +1,18 @@
+[project]
+name = "apt2rule-pipeline"
+version = "0.1.0"
+description = "Builds apt2rule datasets from Elastic prebuilt rules and MITRE ATT&CK"
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=8", "jsonschema>=4"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://0luc.github.io/apt2rule/schema/dataset.schema.json",
+  "title": "apt2rule dataset",
+  "description": "Compact dataset for one Elastic prebuilt ruleset version, joined with the matching ATT&CK release. Produced by the pipeline, consumed by the engine.",
+  "type": "object",
+  "required": ["schemaVersion", "ruleset", "attack", "builtAt", "techniques", "groups", "rules", "integrations", "groupRedirects", "techniqueRedirects"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "ruleset": {
+      "type": "object",
+      "required": ["packageVersion", "stackMinor"],
+      "additionalProperties": false,
+      "properties": {
+        "packageVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "stackMinor": { "type": "string", "pattern": "^\\d+\\.\\d+$" }
+      }
+    },
+    "attack": {
+      "type": "object",
+      "required": ["version"],
+      "additionalProperties": false,
+      "properties": { "version": { "type": "string" } }
+    },
+    "builtAt": { "type": "string" },
+    "techniques": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "#/definitions/techniqueId" },
+          "name": { "type": "string" }
+        }
+      }
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "aliases", "description", "techniques"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "#/definitions/groupId" },
+          "name": { "type": "string" },
+          "aliases": { "type": "array", "items": { "type": "string" } },
+          "description": { "type": "string" },
+          "techniques": {
+            "type": "object",
+            "required": ["direct", "campaign", "software"],
+            "additionalProperties": false,
+            "properties": {
+              "direct": { "$ref": "#/definitions/techniqueIdList" },
+              "campaign": { "$ref": "#/definitions/techniqueIdList" },
+              "software": { "$ref": "#/definitions/techniqueIdList" }
+            }
+          }
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ruleId", "name", "type", "severity", "buildingBlock", "integrations", "techniques"],
+        "additionalProperties": false,
+        "properties": {
+          "ruleId": { "type": "string" },
+          "name": { "type": "string" },
+          "type": { "type": "string" },
+          "severity": { "type": "string" },
+          "buildingBlock": { "type": "boolean" },
+          "integrations": { "type": "array", "items": { "type": "string" } },
+          "techniques": { "$ref": "#/definitions/techniqueIdList" }
+        }
+      }
+    },
+    "integrations": { "type": "array", "items": { "type": "string" } },
+    "groupRedirects": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/groupId" }
+    },
+    "techniqueRedirects": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/techniqueId" }
+    }
+  },
+  "definitions": {
+    "groupId": { "type": "string", "pattern": "^G\\d{4}$" },
+    "techniqueId": { "type": "string", "pattern": "^T\\d{4}(\\.\\d{3})?$" },
+    "techniqueIdList": { "type": "array", "items": { "$ref": "#/definitions/techniqueId" } }
+  }
+}
