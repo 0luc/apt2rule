@@ -45,6 +45,8 @@ export interface Profile {
   techniqueOverrides: Record<string, "include" | "exclude">;
   /** Ticked tags. Within a category (text before ":") any must match; every category with ticks must match. */
   tagFilters: string[];
+  /** Rules carrying one of these tags in the cluster are skipped. A trailing "*" matches a prefix. */
+  ignoreTags: string[];
   includeBuildingBlocks: boolean;
   includeMl: boolean;
 }
@@ -67,9 +69,8 @@ export interface Result {
   selected: Rule[];
   /** Matched rules removed by the tag filter. No tag. */
   filtered: Rule[];
-  /** All other rules: they get the apt2rule(no-APT):<date> tag. */
-  noApt: Rule[];
-  tags: { selected: string; noApt: string };
+  /** The tag the selected rules get: apt2rule:<date>. */
+  tag: string;
   /** Kibana Dev Tools requests: every dry run first, then every apply. */
   requests: BulkTagRequest[];
   /** The requests rendered as text to paste into Kibana Dev Tools. */
@@ -79,7 +80,6 @@ export interface Result {
 }
 
 export interface BulkTagRequest {
-  kind: "selected" | "noApt";
   dryRun: boolean;
   part: number;
   parts: number;
@@ -95,6 +95,6 @@ export interface BulkTagRequest {
 }
 
 export interface RunOptions {
-  /** Maximum rule_ids per selected-rules request. */
+  /** Maximum rule_ids per request. */
   chunkSize?: number;
 }

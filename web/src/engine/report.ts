@@ -1,3 +1,4 @@
+import { ignorePatterns } from "./snippet";
 import type { Dataset, Group, Profile, Rule, TechniqueRow } from "./types";
 
 export interface ReportInput {
@@ -8,8 +9,7 @@ export interface ReportInput {
   techniques: TechniqueRow[];
   selected: Rule[];
   filtered: Rule[];
-  noApt: Rule[];
-  tags: { selected: string; noApt: string };
+  tag: string;
 }
 
 type Status = "covered" | "filtered out" | "no rule";
@@ -43,7 +43,7 @@ export function buildCsv({ dataset, techniques }: ReportInput): string {
 }
 
 export function buildMarkdown(input: ReportInput): string {
-  const { dataset, profile, date, groups, selected, filtered, noApt, tags } = input;
+  const { dataset, profile, date, groups, selected, filtered, tag } = input;
   const included = input.techniques.filter((t) => t.included);
   const groupNames = new Map(dataset.groups.map((g) => [g.id, g.name]));
   const covered = included.filter((t) => techniqueStatus(t) === "covered").length;
@@ -65,9 +65,9 @@ export function buildMarkdown(input: ReportInput): string {
     `- Tag filter: ${profile.tagFilters.join(", ") || "none"}`,
     `- Techniques included: ${included.length} of ${input.techniques.length}`,
     `- Techniques covered by selected rules: ${covered}; gaps: ${included.length - covered}`,
-    `- Selected rules (tag \`${tags.selected}\`): ${selected.length}`,
+    `- Selected rules (tag \`${tag}\`): ${selected.length}`,
     `- Matching rules removed by the tag filter (no tag): ${filtered.length}`,
-    `- Other rules (tag \`${tags.noApt}\`): ${noApt.length}`,
+    `- Ignored tags (skipped in Kibana): ${ignorePatterns(profile.ignoreTags).join(", ") || "none"}`,
     "",
     "## Coverage per group",
     "",

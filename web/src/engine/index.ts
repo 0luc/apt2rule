@@ -1,5 +1,5 @@
 import { buildCsv, buildMarkdown, ruleIdList, type ReportInput } from "./report";
-import { buildRequests, DEFAULT_CHUNK_SIZE, renderSnippets, tagNames } from "./snippet";
+import { buildRequests, DEFAULT_CHUNK_SIZE, renderSnippets, tagName } from "./snippet";
 import type { Dataset, Group, Profile, Provenance, Result, Rule, RunOptions, TechniqueRow } from "./types";
 
 export type * from "./types";
@@ -44,10 +44,9 @@ export function run(dataset: Dataset, profile: Profile, date: string, options: R
 
   const selected: Rule[] = [];
   const filtered: Rule[] = [];
-  const noApt: Rule[] = [];
   for (const rule of dataset.rules) {
-    if (!isCandidate(rule)) noApt.push(rule);
-    else if (passesTagFilter(rule)) selected.push(rule);
+    if (!isCandidate(rule)) continue;
+    if (passesTagFilter(rule)) selected.push(rule);
     else filtered.push(rule);
   }
   for (const [list, key] of [[selected, "selectedRuleIds"], [filtered, "filteredRuleIds"]] as const) {
@@ -61,21 +60,20 @@ export function run(dataset: Dataset, profile: Profile, date: string, options: R
 
   const requests = buildRequests(
     selected.map((r) => r.ruleId),
-    noApt.map((r) => r.ruleId),
+    profile.ignoreTags,
     date,
     options.chunkSize ?? DEFAULT_CHUNK_SIZE,
   );
 
-  const tags = tagNames(date);
-  const report: ReportInput = { dataset, profile, date, groups, techniques: techniqueRows, selected, filtered, noApt, tags };
+  const tag = tagName(date);
+  const report: ReportInput = { dataset, profile, date, groups, techniques: techniqueRows, selected, filtered, tag };
 
   return {
     warnings,
     techniques: techniqueRows,
     selected,
     filtered,
-    noApt,
-    tags,
+    tag,
     requests,
     snippets: renderSnippets(requests, dataset, profile, date),
     report: { markdown: buildMarkdown(report), csv: buildCsv(report) },

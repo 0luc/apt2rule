@@ -112,6 +112,8 @@ h3 { font-size: 0.9rem; margin: 1.1rem 0 0.5rem; color: var(--muted); font-weigh
 .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .split { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 1.25rem; }
 label { display: inline-flex; flex-direction: column; gap: 0.3rem; font-size: 0.85rem; color: var(--muted); }
+label.wide { flex: 1 1 22rem; }
+label.wide input { width: 100%; box-sizing: border-box; }
 label.check { flex-direction: row; align-items: center; gap: 0.45rem; color: var(--text); }
 label.slider span { display: inline-flex; align-items: center; gap: 0.5rem; }
 .split label { display: flex; }

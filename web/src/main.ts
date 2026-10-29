@@ -138,11 +138,11 @@ function render() {
   const stat = (n: number, label: string, tag: string, kind: string) =>
     `<div class="stat ${kind}"><span class="stat-n">${n}</span><span class="stat-label">${label}</span>${tag ? `<code>${esc(tag)}</code>` : ""}</div>`;
   $("summary").innerHTML =
-    stat(result.selected.length, "rules to enable", result.tags.selected, "stat-enable") +
-    stat(result.noApt.length, "other rules (review to disable)", result.tags.noApt, "stat-disable") +
+    stat(result.selected.length, "rules to enable", result.tag, "stat-enable") +
     stat(result.filtered.length, "matching rules removed by tag filter", "no tag", "stat-filtered");
-  $("tag-selected").textContent = result.tags.selected;
-  $("tag-noapt").textContent = result.tags.noApt;
+  $("tag-selected").textContent = result.tag;
+  const ignoreInput = $<HTMLInputElement>("ignore-tags");
+  if (document.activeElement !== ignoreInput) ignoreInput.value = p.ignoreTags.join(", ");
   $("snippet").textContent = result.snippets[state.snippetMode];
   for (const button of document.querySelectorAll<HTMLButtonElement>("[data-mode]")) {
     button.setAttribute("aria-pressed", String(button.dataset.mode === state.snippetMode));
@@ -371,6 +371,10 @@ function bind() {
   $("tag-search").addEventListener("input", (e) => {
     state.tagSearch = (e.target as HTMLInputElement).value;
     render();
+  });
+  $("ignore-tags").addEventListener("change", (e) => {
+    profile().ignoreTags = (e.target as HTMLInputElement).value.split(",").map((t) => t.trim()).filter(Boolean);
+    update();
   });
   $("tag-clear").addEventListener("click", () => {
     profile().tagFilters = [];

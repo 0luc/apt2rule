@@ -30,7 +30,7 @@
       <p class="lede">
         Select the APT groups from your threat analysis. apt2rule maps the ATT&amp;CK techniques they use to Elastic
         prebuilt detection rules and gives you a Kibana Dev Tools snippet that <strong>only adds tags</strong>. Filter by
-        tag in Kibana to bulk-enable or bulk-disable. Nothing you select leaves your browser.
+        tag in Kibana to bulk-enable. Nothing you select leaves your browser.
       </p>
       <aside class="disclaimer" role="note">
         <strong>Disclaimer.</strong> This product is fully vibe coded (built with AI assistance) and comes with no
@@ -125,6 +125,15 @@
           <button id="tag-clear" type="button" class="danger">Clear filter</button>
         </div>
         <ul id="tag-chips" class="chips"></ul>
+        <div class="row">
+          <label class="wide">Ignore rules that carry these tags in your cluster
+            <input id="ignore-tags" type="text" placeholder="disabled-*" autocomplete="off" />
+          </label>
+        </div>
+        <p class="hint">
+          Comma-separated. End a tag with <code>*</code> to match everything that starts with it, e.g. <code>disabled-*</code>.
+          apt2rule can't see your cluster, so Kibana skips these rules when you run the snippet; the dry run shows the real count.
+        </p>
         <div id="tag-categories"></div>
       </section>
 
@@ -151,8 +160,8 @@
             comments. Install all Elastic prebuilt rules first (Rules → Add Elastic rules); they install disabled.
           </p>
           <p class="mode-note production" data-mode-note="apply" hidden>
-            <strong>Production</strong> adds the tags. It never changes, enables or disables a rule. Afterwards, filter the
-            rules table on <code id="tag-selected"></code> to bulk-enable, and review <code id="tag-noapt"></code> to bulk-disable.
+            <strong>Production</strong> adds the tag. It never changes, enables or disables a rule. Afterwards, filter the
+            rules table on <code id="tag-selected"></code> and bulk-enable.
             Tagged prebuilt rules count as customised in Kibana, and rule upgrades may drop the tags: re-run after upgrading.
           </p>
           <pre id="snippet" class="code"></pre>

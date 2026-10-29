@@ -61,13 +61,6 @@ describe("tag filter", () => {
   });
 });
 
-describe("no-APT set", () => {
-  it("contains every rule that is neither selected nor filtered", () => {
-    const result = run(fixtureDataset(), fixtureProfile({ tagFilters: ["Data Source: Elastic Defend"] }), DATE);
-    expect(ids(result.noApt)).toEqual(["r-bb", "r-cmd-parent", "r-dos", "r-ingress", "r-obf"]);
-  });
-});
-
 describe("technique frequency table", () => {
   const both = { groups: ["G0001", "G0002"] };
 
@@ -150,98 +143,85 @@ describe("tag warnings", () => {
 
 describe("Dev Tools requests", () => {
   const BULK = "kbn:/api/detection_engine/rules/_bulk_action";
+  const SELECTED = 'alert.attributes.params.ruleId: ("r-lsass" OR "r-ml" OR "r-phish" OR "r-ps")';
 
-  it("names the tags after the date", () => {
+  it("names the tag after the date", () => {
     const result = run(fixtureDataset(), fixtureProfile(), DATE);
-    expect(result.tags).toEqual({ selected: "apt2rule:2026-10-29", noApt: "apt2rule(no-APT):2026-10-29" });
+    expect(result.tag).toBe("apt2rule:2026-10-29");
   });
 
-  it("tags the selected rules by rule_id, dry run first", () => {
+  it("only tags the selected rules, by rule_id, dry run first", () => {
     const result = run(fixtureDataset(), fixtureProfile(), DATE);
-    const dry = result.requests.find((r) => r.kind === "selected" && r.dryRun);
-    expect(dry).toEqual({
-      kind: "selected",
-      dryRun: true,
-      part: 1,
-      parts: 1,
-      expected: 4,
-      method: "POST",
-      path: `${BULK}?dry_run=true`,
-      body: {
-        action: "edit",
-        query: 'alert.attributes.params.ruleId: ("r-lsass" OR "r-ml" OR "r-phish" OR "r-ps")',
-        edit: [{ type: "add_tags", value: ["apt2rule:2026-10-29"] }],
+    expect(result.requests).toEqual([
+      {
+        dryRun: true,
+        part: 1,
+        parts: 1,
+        expected: 4,
+        method: "POST",
+        path: `${BULK}?dry_run=true`,
+        body: { action: "edit", query: SELECTED, edit: [{ type: "add_tags", value: ["apt2rule:2026-10-29"] }] },
       },
-    });
-    expect(result.requests.map((r) => [r.kind, r.dryRun])).toEqual([
-      ["selected", true],
-      ["noApt", true],
-      ["selected", false],
-      ["noApt", false],
+      {
+        dryRun: false,
+        part: 1,
+        parts: 1,
+        expected: 4,
+        method: "POST",
+        path: BULK,
+        body: { action: "edit", query: SELECTED, edit: [{ type: "add_tags", value: ["apt2rule:2026-10-29"] }] },
+      },
     ]);
-    expect(result.requests[2]?.path).toBe(BULK);
   });
 
-  it("tags every other rule of the ruleset no-APT, listed by rule_id", () => {
-    const result = run(fixtureDataset(), fixtureProfile({ tagFilters: ["Data Source: Elastic Defend"] }), DATE);
-    const apply = result.requests.find((r) => r.kind === "noApt" && !r.dryRun);
-    expect(apply?.expected).toBe(5);
-    expect(apply?.body.query).toBe(
-      'alert.attributes.params.ruleId: ("r-bb" OR "r-cmd-parent" OR "r-dos" OR "r-ingress" OR "r-obf")',
-    );
-    expect(apply?.body.edit).toEqual([{ type: "add_tags", value: ["apt2rule(no-APT):2026-10-29"] }]);
-  });
-
-  it("splits large lists into several requests", () => {
+  it("splits large selections into several requests", () => {
     const result = run(fixtureDataset(), fixtureProfile(), DATE, { chunkSize: 3 });
     const dry = result.requests.filter((r) => r.dryRun);
-    expect(dry.map((r) => [r.kind, r.part, r.parts, r.expected, r.body.query])).toEqual([
-      ["selected", 1, 2, 3, 'alert.attributes.params.ruleId: ("r-lsass" OR "r-ml" OR "r-phish")'],
-      ["selected", 2, 2, 1, 'alert.attributes.params.ruleId: ("r-ps")'],
-      ["noApt", 1, 2, 3, 'alert.attributes.params.ruleId: ("r-bb" OR "r-cmd-parent" OR "r-dos")'],
-      ["noApt", 2, 2, 2, 'alert.attributes.params.ruleId: ("r-ingress" OR "r-obf")'],
+    expect(dry.map((r) => [r.part, r.parts, r.expected, r.body.query])).toEqual([
+      [1, 2, 3, 'alert.attributes.params.ruleId: ("r-lsass" OR "r-ml" OR "r-phish")'],
+      [2, 2, 1, 'alert.attributes.params.ruleId: ("r-ps")'],
     ]);
   });
 
-  it("emits no selected-rules request when nothing is selected", () => {
+  it("emits no requests when nothing is selected", () => {
     const result = run(fixtureDataset(), fixtureProfile({ groups: [] }), DATE);
-    expect(result.requests.map((r) => [r.kind, r.expected])).toEqual([["noApt", 9], ["noApt", 9]]);
+    expect(result.requests).toEqual([]);
+  });
+
+  it("makes Kibana skip rules carrying an ignored tag; a trailing * matches a prefix", () => {
+    const result = run(fixtureDataset(), fixtureProfile({ ignoreTags: ["disabled-*", "Keep off"] }), DATE);
+    expect(result.requests[0]?.body.query).toBe(`${SELECTED} AND NOT alert.attributes.tags: (disabled-* OR "Keep off")`);
+  });
+
+  it("escapes KQL special characters in ignored tag prefixes", () => {
+    const result = run(fixtureDataset(), fixtureProfile({ ignoreTags: ['my tag (old):"x"*'] }), DATE);
+    expect(result.requests[0]?.body.query).toBe(`${SELECTED} AND NOT alert.attributes.tags: (my\\ tag\\ \\(old\\)\\:\\"x\\"*)`);
+  });
+
+  it("ignores blank ignore-tag entries", () => {
+    const result = run(fixtureDataset(), fixtureProfile({ ignoreTags: ["", "  "] }), DATE);
+    expect(result.requests[0]?.body.query).toBe(SELECTED);
   });
 
   it("renders a dry-run snippet that changes nothing", () => {
-    const result = run(fixtureDataset(), fixtureProfile({ groups: ["G0003"] }), DATE);
+    const result = run(fixtureDataset(), fixtureProfile({ groups: ["G0003"], ignoreTags: ["disabled-*"] }), DATE);
     expect(result.snippets.dryRun).toBe(`# apt2rule DRY RUN: changes nothing
 # Profile "Test profile" · Elastic prebuilt rules 9.5.9 (stack 9.5) · ATT&CK 19.1 · generated 2026-10-29
 # Before running: install all Elastic prebuilt rules in Kibana (Rules > Add Elastic rules). They install disabled.
 # Each response lists the rules Kibana would tag. Compare the counts with the comments below.
+# Rules with an ignored tag (disabled-*) are skipped, so Kibana can report fewer than expected.
 
 # Tag "apt2rule:2026-10-29" on selected rules: expect 1 rule
 # Profile "Test profile" · Elastic 9.5.9 · ATT&CK 19.1
 POST ${BULK}?dry_run=true
 {
   "action": "edit",
-  "query": "alert.attributes.params.ruleId: (\\"r-dos\\")",
+  "query": "alert.attributes.params.ruleId: (\\"r-dos\\") AND NOT alert.attributes.tags: (disabled-*)",
   "edit": [
     {
       "type": "add_tags",
       "value": [
         "apt2rule:2026-10-29"
-      ]
-    }
-  ]
-}
-
-# Tag "apt2rule(no-APT):2026-10-29" on all other rules: expect 8 rules
-# Profile "Test profile" · Elastic 9.5.9 · ATT&CK 19.1
-POST ${BULK}?dry_run=true
-{
-  "action": "edit",
-  "query": "alert.attributes.params.ruleId: (\\"r-bb\\" OR \\"r-cmd-parent\\" OR \\"r-ingress\\" OR \\"r-lsass\\" OR \\"r-ml\\" OR \\"r-obf\\" OR \\"r-phish\\" OR \\"r-ps\\")",
-  "edit": [
-    {
-      "type": "add_tags",
-      "value": [
-        "apt2rule(no-APT):2026-10-29"
       ]
     }
   ]
@@ -250,39 +230,24 @@ POST ${BULK}?dry_run=true
   });
 
   it("renders a production snippet that only adds tags", () => {
-    const result = run(fixtureDataset(), fixtureProfile({ groups: ["G0003"] }), DATE);
+    const result = run(fixtureDataset(), fixtureProfile({ groups: ["G0003"], ignoreTags: ["disabled-*"] }), DATE);
     expect(result.snippets.apply).toBe(`# apt2rule PRODUCTION: adds tags
 # Profile "Test profile" · Elastic prebuilt rules 9.5.9 (stack 9.5) · ATT&CK 19.1 · generated 2026-10-29
 # Before running: install all Elastic prebuilt rules in Kibana (Rules > Add Elastic rules) and run the dry run first.
 # These requests only add tags. They do not change, enable or disable any rule.
+# Rules with an ignored tag (disabled-*) are skipped, so Kibana can report fewer than expected.
 
 # Tag "apt2rule:2026-10-29" on selected rules: expect 1 rule
 # Profile "Test profile" · Elastic 9.5.9 · ATT&CK 19.1
 POST ${BULK}
 {
   "action": "edit",
-  "query": "alert.attributes.params.ruleId: (\\"r-dos\\")",
+  "query": "alert.attributes.params.ruleId: (\\"r-dos\\") AND NOT alert.attributes.tags: (disabled-*)",
   "edit": [
     {
       "type": "add_tags",
       "value": [
         "apt2rule:2026-10-29"
-      ]
-    }
-  ]
-}
-
-# Tag "apt2rule(no-APT):2026-10-29" on all other rules: expect 8 rules
-# Profile "Test profile" · Elastic 9.5.9 · ATT&CK 19.1
-POST ${BULK}
-{
-  "action": "edit",
-  "query": "alert.attributes.params.ruleId: (\\"r-bb\\" OR \\"r-cmd-parent\\" OR \\"r-ingress\\" OR \\"r-lsass\\" OR \\"r-ml\\" OR \\"r-obf\\" OR \\"r-phish\\" OR \\"r-ps\\")",
-  "edit": [
-    {
-      "type": "add_tags",
-      "value": [
-        "apt2rule(no-APT):2026-10-29"
       ]
     }
   ]
@@ -340,7 +305,7 @@ describe("report", () => {
     expect(md).toContain("| r-lsass | Rule r-lsass | medium | T1003 | Data Source: Elastic Defend, OS: Windows |  |");
     expect(md).toContain("- Selected rules (tag `apt2rule:2026-10-29`): 2");
     expect(md).toContain("- Matching rules removed by the tag filter (no tag): 3");
-    expect(md).toContain("- Other rules (tag `apt2rule(no-APT):2026-10-29`): 4");
+    expect(md).toContain("- Ignored tags (skipped in Kibana): none");
   });
 
   it("notes machine learning rules in the selected rules table", () => {

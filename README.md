@@ -10,11 +10,9 @@ Turn the APT groups from your threat analysis into tags on the matching Elastic 
 2. Select the MITRE ATT&CK groups relevant to your organisation (search by name or alias, or paste a list).
 3. Narrow the techniques: see how many of your groups use each one, set a minimum, tick techniques in or out.
 4. Optionally filter the rules on their Kibana tags (`Data Source: Elastic Defend`, `OS: Linux`, …). Within a tag category any ticked tag matches; across categories all must match.
-5. Copy the **Dry run** Kibana Dev Tools snippet and check the counts, then the **Production** snippet. It **only adds tags**:
-   - `apt2rule:<date>` on the rules that cover your groups' techniques
-   - `apt2rule(no-APT):<date>` on every other rule in the ruleset
-   - rules that match a technique but are removed by your tag filter get no tag; the coverage report lists them.
-6. In Kibana, filter the rules table by tag and bulk-enable or bulk-disable after review.
+5. Optionally list tags that make Kibana skip a rule, e.g. `disabled-*` (the default; a trailing `*` matches a prefix) for rules you disabled on purpose.
+6. Copy the **Dry run** Kibana Dev Tools snippet and check the counts, then the **Production** snippet. It **only adds one tag**, `apt2rule:<date>`, to the rules that cover your groups' techniques. Rules removed by your tag filter get no tag; the coverage report lists them.
+7. In Kibana, filter the rules table on that tag and bulk-enable after review.
 
 Everything runs in your browser. Profiles are stored in your browser's local storage and can be exported as JSON. apt2rule never connects to your cluster.
 
@@ -60,15 +58,19 @@ npm run dev
 
 Offline / air-gapped: run `npm run build` after building the data, copy `web/dist`, and serve it with any static web server (for example `python3 -m http.server`). Opening `index.html` from disk does not work because the browser blocks loading the data files.
 
-## Still to verify on a real cluster
+## Verified on a real cluster
 
-These Kibana behaviours are assumptions until checked against a Kibana 9.x Enterprise cluster:
+Checked against a Kibana 9.x Enterprise cluster (dry run and production):
 
-- [ ] `alert.attributes.params.ruleId` is the KQL field that selects rules by `rule_id` in `_bulk_action` queries.
-- [ ] `_bulk_action` with `action: edit` / `add_tags` and a `query` works on prebuilt rules, in Dev Tools with the `kbn:` prefix.
-- [ ] `dry_run=true` reports the matched count without changing anything.
-- [ ] 500 `rule_id`s per request stays within Kibana's and Elasticsearch's query limits.
-- [ ] Adding a tag marks a prebuilt rule as customised; what happens to the tag on a rule upgrade.
+- [x] `alert.attributes.params.ruleId` selects rules by `rule_id` in `_bulk_action` queries.
+- [x] `_bulk_action` with `action: edit` / `add_tags` and a `query` works on prebuilt rules, in Dev Tools with the `kbn:` prefix.
+- [x] `dry_run=true` reports the matched rules without changing anything.
+- [x] 500 `rule_id`s per request stays within the query limits.
+
+Still open:
+
+- [ ] The ignore-tags clause (`NOT alert.attributes.tags: (disabled-*)`), especially the `*` prefix match: the dry-run count should drop by exactly the rules carrying such a tag.
+- [ ] What happens to the `apt2rule:` tag when Elastic upgrades a tagged prebuilt rule.
 
 ## Attribution
 

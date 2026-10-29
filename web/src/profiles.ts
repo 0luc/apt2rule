@@ -3,6 +3,9 @@ import type { Dataset, Profile } from "./engine";
 const PROFILES_KEY = "apt2rule.profiles";
 const CURRENT_KEY = "apt2rule.current";
 
+/** Tags that by default make Kibana skip a rule: a convention for rules disabled on purpose. */
+export const DEFAULT_IGNORE_TAGS = ["disabled-*"];
+
 export function newProfile(dataset: Dataset, name: string): Profile {
   return {
     schemaVersion: 1,
@@ -13,6 +16,7 @@ export function newProfile(dataset: Dataset, name: string): Profile {
     minGroups: 1,
     techniqueOverrides: {},
     tagFilters: [],
+    ignoreTags: [...DEFAULT_IGNORE_TAGS],
     includeBuildingBlocks: false,
     includeMl: true,
   };
@@ -66,6 +70,7 @@ export function parseProfile(text: string): Profile {
     minGroups: Number.isInteger(v.minGroups) && v.minGroups! >= 1 ? v.minGroups! : 1,
     techniqueOverrides: overrides,
     tagFilters: strings(v.tagFilters) ? v.tagFilters! : [],
+    ignoreTags: strings(v.ignoreTags) ? v.ignoreTags! : [...DEFAULT_IGNORE_TAGS],
     includeBuildingBlocks: v.includeBuildingBlocks === true,
     includeMl: v.includeMl !== false,
   };
