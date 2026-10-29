@@ -1,11 +1,11 @@
 import { buildCsv, buildMarkdown, ruleIdList, type ReportInput } from "./report";
-import { buildRequests, DEFAULT_CHUNK_SIZE, renderSnippets, tagName } from "./snippet";
-import type { Dataset, Group, Profile, Provenance, Result, Rule, RunOptions, TechniqueRow } from "./types";
+import { buildRequests, renderSnippets, tagName } from "./snippet";
+import type { Dataset, Group, Profile, Provenance, Result, Rule, TechniqueRow } from "./types";
 
 export type * from "./types";
 export { techniqueStatus } from "./report";
 
-export function run(dataset: Dataset, profile: Profile, date: string, options: RunOptions = {}): Result {
+export function run(dataset: Dataset, profile: Profile, date: string): Result {
   const { groups, overrides, warnings } = resolveProfile(dataset, profile);
   const provenances: Provenance[] = profile.includeSoftware ? ["direct", "campaign", "software"] : ["direct", "campaign"];
   const techniqueNames = new Map(dataset.techniques.map((t) => [t.id, t.name]));
@@ -62,7 +62,6 @@ export function run(dataset: Dataset, profile: Profile, date: string, options: R
     selected.map((r) => r.ruleId),
     profile.ignoreTags,
     date,
-    options.chunkSize ?? DEFAULT_CHUNK_SIZE,
   );
 
   const tag = tagName(date);

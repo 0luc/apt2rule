@@ -6,16 +6,18 @@
     <meta name="color-scheme" content="dark" />
     <title>apt2rule</title>
     <meta name="description" content="Turn the APT groups from your threat analysis into tags on the matching Elastic prebuilt detection rules." />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 4 7v8c0 7.5 5.1 13.4 12 15 6.9-1.6 12-7.5 12-15V7z' fill='%230b141c' stroke='%233dd6c4' stroke-width='2'/%3E%3Ccircle cx='16' cy='15' r='4.5' fill='none' stroke='%233dd6c4' stroke-width='2'/%3E%3C/svg%3E" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%233dd6c4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 2.5 30 27.5H2z' fill='%23111b24' stroke-width='1.8'/%3E%3Cpath d='M9.5 18Q16 12.5 22.5 18 16 23.5 9.5 18z' stroke-width='1.4'/%3E%3Ccircle cx='16' cy='18' r='4.7' fill='%23070b10' stroke-width='1.8'/%3E%3Ccircle cx='16' cy='18' r='1.9' fill='%233dd6c4' stroke='none'/%3E%3Cpath d='M19.4 21.4 26 28' stroke-width='2.8'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="./src/style.css" />
   </head>
   <body>
     <header class="masthead">
       <div class="brand">
         <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
-          <path d="M16 2 4 7v8c0 7.5 5.1 13.4 12 15 6.9-1.6 12-7.5 12-15V7z" />
-          <circle cx="16" cy="15" r="4.5" />
-          <path d="M16 7.5v3M16 19.5v3M8.5 15h3M20.5 15h3" />
+          <path class="logo-triangle" d="M16 2.5 30 27.5H2z" />
+          <path class="logo-eye" d="M9.5 18Q16 12.5 22.5 18 16 23.5 9.5 18z" />
+          <circle class="logo-lens" cx="16" cy="18" r="4.7" />
+          <circle class="logo-pupil" cx="16" cy="18" r="1.9" />
+          <path class="logo-handle" d="M19.4 21.4 26 28" />
         </svg>
         <div>
           <h1>apt2rule</h1>

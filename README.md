@@ -21,6 +21,7 @@ Everything runs in your browser. Profiles are stored in your browser's local sto
 - **Install all Elastic prebuilt rules** in Kibana first (Rules > Add Elastic rules). They install disabled. Kibana can only tag rules that are installed.
 - Choose the ruleset version that is installed in your cluster (Management → Integrations → Prebuilt Security Detection Rules → Settings, or `GET kbn:/api/fleet/epm/packages/security_detection_engine` in Dev Tools). Only rules in that version are tagged.
 - Always run the **Dry run** snippet first and compare the counts with the comments in it.
+- The snippet tags all selected rules in **one request**. Each `rule_id` is one clause in the query; if your cluster's `indices.query.bool.max_clause_count` is lower than the number of rules, the dry run fails with a "too many clauses" error. Narrow the selection (fewer groups, a higher minimum, tag filters) in that case.
 - Tagging prebuilt rules needs Elastic's *prebuilt rule customization* (Kibana 8.18 / 9.0+, Enterprise licence). A tagged prebuilt rule counts as **customised**; when Elastic upgrades it, the upgrade may drop your tags. Re-run apt2rule after upgrading rules.
 
 ## How it works
@@ -65,11 +66,10 @@ Checked against a Kibana 9.x Enterprise cluster (dry run and production):
 - [x] `alert.attributes.params.ruleId` selects rules by `rule_id` in `_bulk_action` queries.
 - [x] `_bulk_action` with `action: edit` / `add_tags` and a `query` works on prebuilt rules, in Dev Tools with the `kbn:` prefix.
 - [x] `dry_run=true` reports the matched rules without changing anything.
-- [x] 500 `rule_id`s per request stays within the query limits.
+- [x] Rules carrying an ignored tag are skipped, including the `*` prefix match (`NOT alert.attributes.tags: (disabled-*)`).
 
 Still open:
 
-- [ ] The ignore-tags clause (`NOT alert.attributes.tags: (disabled-*)`), especially the `*` prefix match: the dry-run count should drop by exactly the rules carrying such a tag.
 - [ ] What happens to the `apt2rule:` tag when Elastic upgrades a tagged prebuilt rule.
 
 ## Attribution

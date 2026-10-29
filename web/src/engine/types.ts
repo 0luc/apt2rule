@@ -81,8 +81,6 @@ export interface Result {
 
 export interface BulkTagRequest {
   dryRun: boolean;
-  part: number;
-  parts: number;
   /** Number of rules apt2rule expects Kibana to tag. */
   expected: number;
   method: "POST";
@@ -92,9 +90,4 @@ export interface BulkTagRequest {
     query: string;
     edit: { type: "add_tags"; value: string[] }[];
   };
-}
-
-export interface RunOptions {
-  /** Maximum rule_ids per request. */
-  chunkSize?: number;
 }

@@ -155,8 +155,6 @@ describe("Dev Tools requests", () => {
     expect(result.requests).toEqual([
       {
         dryRun: true,
-        part: 1,
-        parts: 1,
         expected: 4,
         method: "POST",
         path: `${BULK}?dry_run=true`,
@@ -164,8 +162,6 @@ describe("Dev Tools requests", () => {
       },
       {
         dryRun: false,
-        part: 1,
-        parts: 1,
         expected: 4,
         method: "POST",
         path: BULK,
@@ -174,12 +170,14 @@ describe("Dev Tools requests", () => {
     ]);
   });
 
-  it("splits large selections into several requests", () => {
-    const result = run(fixtureDataset(), fixtureProfile(), DATE, { chunkSize: 3 });
-    const dry = result.requests.filter((r) => r.dryRun);
-    expect(dry.map((r) => [r.part, r.parts, r.expected, r.body.query])).toEqual([
-      [1, 2, 3, 'alert.attributes.params.ruleId: ("r-lsass" OR "r-ml" OR "r-phish")'],
-      [2, 2, 1, 'alert.attributes.params.ruleId: ("r-ps")'],
+  it("puts every selected rule in a single request, however many there are", () => {
+    const dataset = fixtureDataset();
+    const many = Array.from({ length: 1500 }, (_, i) => `r-extra-${String(i).padStart(4, "0")}`);
+    dataset.rules.push(...many.map((ruleId) => ({ ...dataset.rules[0]!, ruleId })));
+    const result = run(dataset, fixtureProfile(), DATE);
+    expect(result.requests.map((r) => [r.dryRun, r.expected])).toEqual([
+      [true, 1504],
+      [false, 1504],
     ]);
   });
 

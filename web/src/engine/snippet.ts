@@ -4,37 +4,26 @@ const BULK_ACTION = "kbn:/api/detection_engine/rules/_bulk_action";
 // Saved-object fields of a detection rule in Kibana's rules KQL (rule_id verified on Kibana 9.x).
 const RULE_ID_FIELD = "alert.attributes.params.ruleId";
 const TAGS_FIELD = "alert.attributes.tags";
-export const DEFAULT_CHUNK_SIZE = 500;
 
 export function tagName(date: string) {
   return `apt2rule:${date}`;
 }
 
 /**
- * Builds the add_tags bulk requests for the selected rules, listed by rule_id and chunked so each
- * KQL query stays well below Elasticsearch's clause limit. Rules carrying an ignored tag are
- * excluded by Kibana itself: apt2rule can't see tags added in the cluster.
+ * Builds the add_tags bulk requests for the selected rules, listed by rule_id: one dry run and one
+ * apply, each a single request. Rules carrying an ignored tag are excluded by Kibana itself:
+ * apt2rule can't see tags added in the cluster.
  */
-export function buildRequests(selectedIds: string[], ignoreTags: string[], date: string, chunkSize: number): BulkTagRequest[] {
-  const sorted = [...selectedIds].sort();
-  const chunks: string[][] = [];
-  for (let i = 0; i < sorted.length; i += chunkSize) chunks.push(sorted.slice(i, i + chunkSize));
-  const ignore = ignoreClause(ignoreTags);
-  return [true, false].flatMap((dryRun) =>
-    chunks.map((chunk, i) => ({
-      dryRun,
-      part: i + 1,
-      parts: chunks.length,
-      expected: chunk.length,
-      method: "POST" as const,
-      path: dryRun ? `${BULK_ACTION}?dry_run=true` : BULK_ACTION,
-      body: {
-        action: "edit" as const,
-        query: ruleIdQuery(chunk) + ignore,
-        edit: [{ type: "add_tags" as const, value: [tagName(date)] }],
-      },
-    })),
-  );
+export function buildRequests(selectedIds: string[], ignoreTags: string[], date: string): BulkTagRequest[] {
+  if (!selectedIds.length) return [];
+  const query = ruleIdQuery([...selectedIds].sort()) + ignoreClause(ignoreTags);
+  return [true, false].map((dryRun) => ({
+    dryRun,
+    expected: selectedIds.length,
+    method: "POST" as const,
+    path: dryRun ? `${BULK_ACTION}?dry_run=true` : BULK_ACTION,
+    body: { action: "edit" as const, query, edit: [{ type: "add_tags" as const, value: [tagName(date)] }] },
+  }));
 }
 
 /** The ignore-tag patterns that actually filter: trimmed, blanks dropped. */
@@ -83,10 +72,9 @@ export function renderSnippets(requests: BulkTagRequest[], dataset: Dataset, pro
 /** One request as Dev Tools text, with a comment saying what it does and where it comes from. */
 export function renderRequest(request: BulkTagRequest, dataset: Dataset, profile: Profile): string {
   const tag = JSON.stringify(request.body.edit[0]?.value[0]);
-  const part = request.parts > 1 ? ` (part ${request.part} of ${request.parts})` : "";
   const count = `${request.expected} rule${request.expected === 1 ? "" : "s"}`;
   return [
-    `# Tag ${tag} on selected rules${part}: expect ${count}`,
+    `# Tag ${tag} on selected rules: expect ${count}`,
     `# Profile ${JSON.stringify(profile.name)} · Elastic ${dataset.ruleset.packageVersion} · ATT&CK ${dataset.attack.version}`,
     `${request.method} ${request.path}`,
     JSON.stringify(request.body, null, 2),

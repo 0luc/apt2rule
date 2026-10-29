@@ -45,8 +45,13 @@ code { color: var(--accent); background: var(--accent-dim); padding: 0.05rem 0.3
 /* ---------- masthead ---------- */
 .masthead { margin-bottom: 1.5rem; }
 .brand { display: flex; align-items: center; gap: 0.9rem; }
-.logo { width: 2.75rem; height: 2.75rem; flex: none; fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; }
-.logo path:first-child { fill: var(--panel-raised); }
+/* Logo: an eye in a triangle, seen through a magnifying glass. */
+.logo { width: 3rem; height: 3rem; flex: none; fill: none; stroke: var(--accent); stroke-linecap: round; stroke-linejoin: round; }
+.logo-triangle { fill: var(--panel-raised); stroke-width: 1.6; }
+.logo-eye { stroke-width: 1.3; }
+.logo-lens { fill: var(--bg); stroke-width: 1.6; }
+.logo-pupil { fill: var(--accent); stroke: none; }
+.logo-handle { stroke-width: 2.6; }
 h1 { margin: 0; font-family: var(--mono); font-size: 1.9rem; letter-spacing: -0.02em; }
 h1::after { content: "_"; color: var(--accent); animation: blink 1.2s steps(1) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
