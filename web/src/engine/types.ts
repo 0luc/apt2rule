@@ -1,13 +1,14 @@
 /** Compact dataset for one ruleset version. Contract: schema/dataset.schema.json */
 export interface Dataset {
-  schemaVersion: 1;
+  schemaVersion: 2;
   ruleset: { packageVersion: string; stackMinor: string };
   attack: { version: string };
   builtAt: string;
   techniques: { id: string; name: string }[];
   groups: Group[];
   rules: Rule[];
-  integrations: string[];
+  /** Every tag used by a rule, sorted. */
+  tags: string[];
   groupRedirects: Record<string, string>;
   techniqueRedirects: Record<string, string>;
 }
@@ -28,7 +29,8 @@ export interface Rule {
   type: string;
   severity: string;
   buildingBlock: boolean;
-  integrations: string[];
+  /** Kibana rule tags, e.g. "Data Source: Elastic Defend", "OS: Windows". */
+  tags: string[];
   techniques: string[];
 }
 
@@ -41,7 +43,8 @@ export interface Profile {
   includeSoftware: boolean;
   minGroups: number;
   techniqueOverrides: Record<string, "include" | "exclude">;
-  integrations: string[];
+  /** Ticked tags. Within a category (text before ":") any must match; every category with ticks must match. */
+  tagFilters: string[];
   includeBuildingBlocks: boolean;
   includeMl: boolean;
 }
@@ -54,7 +57,7 @@ export interface TechniqueRow {
   count: number;
   included: boolean;
   selectedRuleIds: string[];
-  noDataRuleIds: string[];
+  filteredRuleIds: string[];
 }
 
 export interface Result {
@@ -62,8 +65,8 @@ export interface Result {
   techniques: TechniqueRow[];
   /** Matched rules that will get the apt2rule:<date> tag. */
   selected: Rule[];
-  /** Matched rules dropped because none of their integrations is ticked. No tag. */
-  noData: Rule[];
+  /** Matched rules removed by the tag filter. No tag. */
+  filtered: Rule[];
   /** All other rules: they get the apt2rule(no-APT):<date> tag. */
   noApt: Rule[];
   tags: { selected: string; noApt: string };

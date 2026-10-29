@@ -28,19 +28,20 @@ def test_a_parent_only_counts_when_it_has_no_subtechniques_listed(make_package, 
 
 def test_copies_the_rule_metadata_the_engine_needs(make_package, make_bundle):
     dataset = build(make_package, make_bundle, [
-        rule("r1", 1, {"T1003": []}, [{"package": "endpoint", "version": "^9"}, {"package": "aws", "integration": "cloudtrail", "version": "^3"}],
-             name="LSASS access", type="machine_learning", severity="high", building_block_type="default"),
+        rule("r1", 1, {"T1003": []}, name="LSASS access", type="machine_learning", severity="high",
+             building_block_type="default", tags=["OS: Windows", "Data Source: Elastic Defend"]),
+        rule("r2", 1, tags=["OS: Linux", "Data Source: Elastic Defend"]),
     ])
-    assert dataset["rules"] == [{
+    assert dataset["rules"][0] == {
         "ruleId": "r1",
         "name": "LSASS access",
         "type": "machine_learning",
         "severity": "high",
         "buildingBlock": True,
-        "integrations": ["aws/cloudtrail", "endpoint"],
+        "tags": ["Data Source: Elastic Defend", "OS: Windows"],
         "techniques": ["T1003"],
-    }]
-    assert dataset["integrations"] == ["aws/cloudtrail", "endpoint"]
+    }
+    assert dataset["tags"] == ["Data Source: Elastic Defend", "OS: Linux", "OS: Windows"]
 
 
 def test_drops_rules_whose_latest_version_is_deprecated(make_package, make_bundle):

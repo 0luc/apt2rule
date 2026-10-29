@@ -1,4 +1,4 @@
-import { renderRequest, run, techniqueStatus, type Dataset, type Group, type Profile, type Result } from "./engine";
+import { renderRequest, run, tagCategory, techniqueStatus, type Dataset, type Group, type Profile, type Result } from "./engine";
 import { loadProfiles, newProfile, parseProfile, saveProfiles } from "./profiles";
 
 interface IndexFile {
@@ -15,6 +15,8 @@ const state = {
   profiles: {} as Record<string, Profile>,
   current: "",
   search: "",
+  tagSearch: "",
+  openCategories: new Set<string>(["Data Source", "OS"]),
   tab: "snippet",
   result: null as Result | null,
 };
@@ -118,7 +120,7 @@ function render() {
             <td><input type="checkbox" data-technique="${t.id}" ${t.included ? "checked" : ""} aria-label="Include ${t.id}"></td>
             <td><a href="https://attack.mitre.org/techniques/${t.id.replace(".", "/")}/" target="_blank" rel="noopener">${t.id}</a> ${esc(t.name)}</td>
             <td>${t.count} <span class="hint">${esc(groups)}</span></td>
-            <td>${t.selectedRuleIds.length}${t.noDataRuleIds.length ? ` <span class="hint">+${t.noDataRuleIds.length} need integration</span>` : ""}</td>
+            <td>${t.selectedRuleIds.length}${t.filteredRuleIds.length ? ` <span class="hint">+${t.filteredRuleIds.length} filtered out</span>` : ""}</td>
             <td class="${status === "covered" ? "status-covered" : "status-gap"}">${t.included ? status : "excluded"}</td></tr>`;
         })
         .join("") +
@@ -128,21 +130,14 @@ function render() {
   // filters
   $<HTMLInputElement>("include-bb").checked = p.includeBuildingBlocks;
   $<HTMLInputElement>("include-ml").checked = p.includeMl;
-  const ruleCounts = new Map<string, number>();
-  for (const r of dataset.rules) for (const i of r.integrations) ruleCounts.set(i, (ruleCounts.get(i) ?? 0) + 1);
-  $("integrations").innerHTML = dataset.integrations
-    .map(
-      (i) => `<li><label class="check"><input type="checkbox" data-integration="${esc(i)}" ${p.integrations.includes(i) ? "checked" : ""}>
-        ${esc(i)} <span class="hint">${ruleCounts.get(i) ?? 0}</span></label></li>`,
-    )
-    .join("");
+  renderTagFilter(dataset, p);
 
   // output
   $("warnings").innerHTML = result.warnings.map((w) => `<li>${esc(w)}</li>`).join("");
   $("summary").innerHTML =
     `<strong>${result.selected.length}</strong> rules to tag <code>${esc(result.tags.selected)}</code>, ` +
-    `<strong>${result.noApt.length}</strong> other prebuilt rules to tag <code>${esc(result.tags.noApt)}</code>, ` +
-    `<strong>${result.noData.length}</strong> matching rules skipped for a missing integration.`;
+    `<strong>${result.noApt.length}</strong> other rules to tag <code>${esc(result.tags.noApt)}</code>, ` +
+    `<strong>${result.filtered.length}</strong> matching rules removed by the tag filter (no tag).`;
   $("tag-selected").textContent = result.tags.selected;
   $("tag-noapt").textContent = result.tags.noApt;
   $("snippet").textContent = result.snippet;
@@ -161,6 +156,49 @@ function render() {
     tab.setAttribute("aria-selected", String(tab.dataset.tab === state.tab));
   }
   for (const panel of document.querySelectorAll<HTMLElement>("[data-panel]")) panel.hidden = panel.dataset.panel !== state.tab;
+}
+
+function setTag(tag: string, on: boolean) {
+  const p = profile();
+  p.tagFilters = on ? [...new Set([...p.tagFilters, tag])] : p.tagFilters.filter((t) => t !== tag);
+  update();
+}
+
+const FIRST_CATEGORIES = ["Data Source", "OS"];
+
+/** Tag checklist grouped by category, as in Kibana; categories open when searched or holding a ticked tag. */
+function renderTagFilter(dataset: Dataset, p: Profile) {
+  const counts = new Map<string, number>();
+  for (const r of dataset.rules) for (const t of r.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
+  const query = state.tagSearch.trim().toLowerCase();
+  const categories = new Map<string, string[]>();
+  for (const tag of dataset.tags) {
+    if (query && !tag.toLowerCase().includes(query)) continue;
+    const category = tagCategory(tag);
+    categories.set(category, [...(categories.get(category) ?? []), tag]);
+  }
+  const rank = (c: string) => (FIRST_CATEGORIES.includes(c) ? FIRST_CATEGORIES.indexOf(c) : FIRST_CATEGORIES.length);
+  const ordered = [...categories.entries()].sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0]));
+  const ticked = new Set(p.tagFilters);
+
+  $("tag-chips").innerHTML = p.tagFilters
+    .map((t) => `<li>${esc(t)} <button type="button" data-remove-tag="${esc(t)}" aria-label="Remove ${esc(t)}">×</button></li>`)
+    .join("");
+  $("tag-categories").innerHTML =
+    ordered
+      .map(([category, tags]) => {
+        const nTicked = tags.filter((t) => ticked.has(t)).length;
+        const open = query || state.openCategories.has(category) || nTicked > 0;
+        return `<details data-category="${esc(category)}" ${open ? "open" : ""}>
+          <summary>${esc(category)} <span class="hint">${tags.length} tags${nTicked ? `, ${nTicked} ticked` : ""}</span></summary>
+          <ul class="checklist">${tags
+            .map(
+              (t) => `<li><label class="check"><input type="checkbox" data-tag="${esc(t)}" ${ticked.has(t) ? "checked" : ""}>
+                ${esc(t.slice(category === "Other" ? 0 : category.length + 1).trim())} <span class="hint">${counts.get(t) ?? 0}</span></label></li>`,
+            )
+            .join("")}</ul></details>`;
+      })
+      .join("") || `<p class="hint">No tag matches “${esc(state.tagSearch)}”.</p>`;
 }
 
 function otherAliases(g: Group): string[] {
@@ -250,13 +288,8 @@ function bind() {
     }
   });
   $("ruleset").addEventListener("change", async (e) => {
-    const p = profile();
-    const previous = new Set(state.dataset!.integrations);
-    p.rulesetVersion = (e.target as HTMLSelectElement).value;
-    state.dataset = await loadDataset(p.rulesetVersion);
-    // Integrations the old ruleset didn't have were never a choice: tick them rather than silently dropping their rules.
-    const added = state.dataset.integrations.filter((i) => !previous.has(i) && !p.integrations.includes(i));
-    p.integrations = [...p.integrations, ...added];
+    profile().rulesetVersion = (e.target as HTMLSelectElement).value;
+    state.dataset = await loadDataset(profile().rulesetVersion);
     update();
   });
 
@@ -322,20 +355,32 @@ function bind() {
     profile().includeMl = (e.target as HTMLInputElement).checked;
     update();
   });
-  $("integrations").addEventListener("change", (e) => {
-    const box = e.target as HTMLInputElement;
-    const p = profile();
-    const name = box.dataset.integration!;
-    p.integrations = box.checked ? [...p.integrations, name] : p.integrations.filter((i) => i !== name);
+  $("tag-categories").addEventListener("change", (e) => {
+    const tag = (e.target as HTMLInputElement).dataset.tag;
+    if (tag !== undefined) setTag(tag, (e.target as HTMLInputElement).checked);
+  });
+  $("tag-categories").addEventListener(
+    "toggle",
+    (e) => {
+      const details = e.target as HTMLDetailsElement;
+      const category = details.dataset.category;
+      if (category === undefined || state.tagSearch.trim()) return;
+      if (details.open) state.openCategories.add(category);
+      else state.openCategories.delete(category);
+    },
+    true,
+  );
+  $("tag-search").addEventListener("input", (e) => {
+    state.tagSearch = (e.target as HTMLInputElement).value;
+    render();
+  });
+  $("tag-clear").addEventListener("click", () => {
+    profile().tagFilters = [];
     update();
   });
-  $("int-all").addEventListener("click", () => {
-    profile().integrations = [...state.dataset!.integrations];
-    update();
-  });
-  $("int-none").addEventListener("click", () => {
-    profile().integrations = [];
-    update();
+  $("tag-chips").addEventListener("click", (e) => {
+    const tag = (e.target as HTMLElement).closest<HTMLElement>("[data-remove-tag]")?.dataset.removeTag;
+    if (tag !== undefined) setTag(tag, false);
   });
 
   const base = () => `apt2rule-${slug(profile().name)}-${today()}`;

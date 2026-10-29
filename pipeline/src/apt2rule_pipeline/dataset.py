@@ -18,13 +18,13 @@ def build_dataset(package_zip: Path, stix_bundle: Path, built_at: str) -> dict:
     for rule in rules:
         rule["techniques"] = sorted({redirects.get(t, t) for t in rule["techniques"]})
     return {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "ruleset": {"packageVersion": package_version, "stackMinor": ".".join(package_version.split(".")[:2])},
         "attack": {"version": attack_version},
         "builtAt": built_at,
         **attack,
         "rules": rules,
-        "integrations": sorted({i for r in rules for i in r["integrations"]}),
+        "tags": sorted({t for r in rules for t in r["tags"]}),
     }
 
 
@@ -69,17 +69,13 @@ def _rule_fields(a: dict) -> dict:
             techniques.update(s["id"] for s in subtechniques)
             if not subtechniques:
                 techniques.add(technique["id"])
-    integrations = {
-        f"{i['package']}/{i['integration']}" if i.get("integration") else i["package"]
-        for i in a.get("related_integrations", [])
-    }
     return {
         "ruleId": a["rule_id"],
         "name": a["name"],
         "type": a["type"],
         "severity": a["severity"],
         "buildingBlock": bool(a.get("building_block_type")),
-        "integrations": sorted(integrations),
+        "tags": sorted(set(a.get("tags", []))),
         "techniques": sorted(techniques),
     }
 

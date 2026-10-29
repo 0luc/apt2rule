@@ -108,6 +108,8 @@ tr.excluded td { color: var(--muted); }
 
 .checklist { list-style: none; padding: 0; columns: 16rem; }
 .checklist li { break-inside: avoid; }
+#tag-categories details { border-top: 1px solid var(--border); padding: 0.4rem 0; }
+#tag-categories summary { cursor: pointer; font-weight: 600; }
 
 .warnings { list-style: none; padding: 0; }
 .warnings li { background: var(--warn-bg); color: var(--warn-text); padding: 0.4rem 0.7rem; border-radius: 6px; margin: 0.3rem 0; }

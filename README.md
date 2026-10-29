@@ -7,11 +7,11 @@ Turn the APT groups from your threat analysis into tags on the matching Elastic 
 1. Pick the Elastic prebuilt ruleset version that matches your stack.
 2. Select the MITRE ATT&CK groups relevant to your organisation (search by name or alias, or paste a list).
 3. Narrow the techniques: see how many of your groups use each one, set a minimum, tick techniques in or out.
-4. Tick the integrations (data sources) you ingest.
+4. Optionally filter the rules on their Kibana tags (`Data Source: Elastic Defend`, `OS: Linux`, …). Within a tag category any ticked tag matches; across categories all must match.
 5. Copy the Kibana Dev Tools snippet. It **only adds tags**:
    - `apt2rule:<date>` on the rules that cover your groups' techniques
    - `apt2rule(no-APT):<date>` on every other rule in the ruleset
-   - rules that match a technique but need an integration you don't have get no tag; the coverage report lists them.
+   - rules that match a technique but are removed by your tag filter get no tag; the coverage report lists them.
 6. In Kibana, filter the rules table by tag and bulk-enable or bulk-disable after review.
 
 Everything runs in your browser. Profiles are stored in your browser's local storage and can be exported as JSON. apt2rule never connects to your cluster.

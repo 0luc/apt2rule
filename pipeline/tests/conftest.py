@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 
-def rule(rule_id, version, techniques=(), integrations=(), **extra):
+def rule(rule_id, version, techniques=(), **extra):
     """A security-rule saved object as found in the Elastic package. techniques: {"T1059": ["T1059.001"]}."""
     threat = [
         {
@@ -23,7 +23,7 @@ def rule(rule_id, version, techniques=(), integrations=(), **extra):
         "name": f"Rule {rule_id}",
         "type": "eql",
         "severity": "medium",
-        "related_integrations": list(integrations),
+        "tags": [],
         "threat": threat,
         **extra,
     }

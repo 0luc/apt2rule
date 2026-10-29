@@ -17,7 +17,7 @@ export function run(dataset: Dataset, profile: Profile, date: string, options: R
       for (const id of group.techniques[via]) {
         let row = rows.get(id);
         if (!row) {
-          row = { id, name: techniqueNames.get(id) ?? id, groups: [], count: 0, included: false, selectedRuleIds: [], noDataRuleIds: [] };
+          row = { id, name: techniqueNames.get(id) ?? id, groups: [], count: 0, included: false, selectedRuleIds: [], filteredRuleIds: [] };
           rows.set(id, row);
         }
         const entry = row.groups.find((g) => g.id === group.id);
@@ -36,23 +36,22 @@ export function run(dataset: Dataset, profile: Profile, date: string, options: R
   }
   const techniqueRows = [...rows.values()].sort((a, b) => b.count - a.count || a.id.localeCompare(b.id));
   const techniques = new Set(techniqueRows.filter((t) => t.included).map((t) => t.id));
-  const ticked = new Set(profile.integrations);
 
   const isCandidate = (r: Rule) =>
     r.techniques.some((t) => techniques.has(t)) &&
     (profile.includeBuildingBlocks || !r.buildingBlock) &&
     (profile.includeMl || r.type !== "machine_learning");
-  const hasData = (r: Rule) => r.integrations.length === 0 || r.integrations.some((i) => ticked.has(i));
+  const passesTagFilter = tagFilter(profile.tagFilters);
 
   const selected: Rule[] = [];
-  const noData: Rule[] = [];
+  const filtered: Rule[] = [];
   const noApt: Rule[] = [];
   for (const rule of dataset.rules) {
     if (!isCandidate(rule)) noApt.push(rule);
-    else if (hasData(rule)) selected.push(rule);
-    else noData.push(rule);
+    else if (passesTagFilter(rule)) selected.push(rule);
+    else filtered.push(rule);
   }
-  for (const [list, key] of [[selected, "selectedRuleIds"], [noData, "noDataRuleIds"]] as const) {
+  for (const [list, key] of [[selected, "selectedRuleIds"], [filtered, "filteredRuleIds"]] as const) {
     for (const rule of list) {
       for (const t of rule.techniques) {
         const row = rows.get(t);
@@ -69,13 +68,13 @@ export function run(dataset: Dataset, profile: Profile, date: string, options: R
   );
 
   const tags = tagNames(date);
-  const report: ReportInput = { dataset, profile, date, groups, techniques: techniqueRows, selected, noData, noApt, tags };
+  const report: ReportInput = { dataset, profile, date, groups, techniques: techniqueRows, selected, filtered, noApt, tags };
 
   return {
     warnings,
     techniques: techniqueRows,
     selected,
-    noData,
+    filtered,
     noApt,
     tags,
     requests,
@@ -114,11 +113,25 @@ function resolveProfile(dataset: Dataset, profile: Profile) {
     overrides.set(id, value);
   }
 
-  const integrations = new Set(dataset.integrations);
-  for (const name of profile.integrations) {
-    if (!integrations.has(name)) {
-      warnings.push(`Integration ${name} does not exist in Elastic ruleset ${dataset.ruleset.packageVersion} and was ignored.`);
-    }
+  const tags = new Set(dataset.tags);
+  for (const tag of profile.tagFilters) {
+    if (!tags.has(tag)) warnings.push(`Tag ${tag} does not exist in Elastic ruleset ${dataset.ruleset.packageVersion} and was ignored.`);
   }
   return { groups, overrides, warnings };
+}
+
+/** The category of a Kibana tag: the text before the first ":" ("Data Source", "OS", ...). */
+export function tagCategory(tag: string): string {
+  const i = tag.indexOf(":");
+  return i === -1 ? "Other" : tag.slice(0, i).trim();
+}
+
+/** Within a category any ticked tag matches; every category with ticked tags must match. */
+function tagFilter(ticked: string[]): (rule: Rule) => boolean {
+  const byCategory = new Map<string, Set<string>>();
+  for (const tag of ticked) {
+    const category = tagCategory(tag);
+    byCategory.set(category, (byCategory.get(category) ?? new Set()).add(tag));
+  }
+  return (rule) => [...byCategory.values()].every((wanted) => rule.tags.some((t) => wanted.has(t)));
 }

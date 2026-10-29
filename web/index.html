@@ -66,17 +66,22 @@
       </section>
 
       <section id="filters" aria-labelledby="filters-h">
-        <h2 id="filters-h">4. Data sources and rule types</h2>
+        <h2 id="filters-h">4. Filter rules by tag</h2>
         <div class="row">
           <label class="check"><input id="include-bb" type="checkbox" /> Include building block rules</label>
           <label class="check"><input id="include-ml" type="checkbox" /> Include machine learning rules (need their ML job)</label>
         </div>
-        <p class="hint">Tick the integrations you ingest. A rule is kept if any of its integrations is ticked, or if it declares none.</p>
+        <p class="hint">
+          The same tags you see in Kibana's rules table. Within a category a rule needs any ticked tag; across categories it
+          needs all of them. E.g. <em>Data Source: Elastic Defend</em> + <em>OS: Linux</em> + <em>OS: Windows</em> keeps Elastic
+          Defend rules for Linux or Windows. Nothing ticked means no filter.
+        </p>
         <div class="row">
-          <button id="int-all" type="button">All</button>
-          <button id="int-none" type="button">None</button>
+          <label>Search tags <input id="tag-search" type="search" placeholder="e.g. Defend, Linux, AWS" autocomplete="off" /></label>
+          <button id="tag-clear" type="button" class="danger">Clear filter</button>
         </div>
-        <ul id="integrations" class="checklist"></ul>
+        <ul id="tag-chips" class="chips"></ul>
+        <div id="tag-categories"></div>
       </section>
 
       <section id="output" aria-labelledby="output-h">

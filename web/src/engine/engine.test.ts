@@ -34,27 +34,36 @@ describe("rule selection", () => {
   });
 });
 
-describe("integration filter", () => {
-  it("moves matched rules whose integrations are all unticked to noData", () => {
-    const result = run(fixtureDataset(), fixtureProfile({ integrations: ["endpoint"] }), DATE);
-    expect(ids(result.selected)).toEqual(["r-lsass", "r-ml", "r-ps"]);
-    expect(ids(result.noData)).toEqual(["r-phish"]);
+describe("tag filter", () => {
+  const DEFEND = "Data Source: Elastic Defend";
+
+  it("filters nothing when no tag is ticked", () => {
+    const result = run(fixtureDataset(), fixtureProfile(), DATE);
+    expect(result.filtered).toEqual([]);
   });
 
-  it("keeps a rule when any one of its alternative integrations is ticked", () => {
-    const result = run(fixtureDataset(), fixtureProfile({ integrations: ["windows"] }), DATE);
-    expect(ids(result.selected)).toContain("r-ps");
+  it("moves matched rules without a ticked tag to filtered", () => {
+    const result = run(fixtureDataset(), fixtureProfile({ tagFilters: [DEFEND] }), DATE);
+    expect(ids(result.selected)).toEqual(["r-lsass", "r-ps"]);
+    expect(ids(result.filtered)).toEqual(["r-ml", "r-phish"]);
   });
 
-  it("keeps rules that declare no integration", () => {
-    const result = run(fixtureDataset(), fixtureProfile({ integrations: [] }), DATE);
-    expect(ids(result.selected)).toEqual(["r-ml"]);
+  it("keeps a rule when any ticked tag of the same category matches", () => {
+    const result = run(fixtureDataset(), fixtureProfile({ tagFilters: [DEFEND, "Data Source: Microsoft 365"] }), DATE);
+    expect(ids(result.selected)).toEqual(["r-lsass", "r-phish", "r-ps"]);
+  });
+
+  it("requires a match in every category that has ticked tags", () => {
+    const profile = fixtureProfile({ includeBuildingBlocks: true, tagFilters: [DEFEND, "OS: Linux"] });
+    const result = run(fixtureDataset(), profile, DATE);
+    expect(ids(result.selected)).toEqual(["r-bb"]);
+    expect(ids(result.filtered)).toEqual(["r-lsass", "r-ml", "r-phish", "r-ps"]);
   });
 });
 
 describe("no-APT set", () => {
-  it("contains every rule that is neither selected nor noData", () => {
-    const result = run(fixtureDataset(), fixtureProfile({ integrations: ["endpoint"] }), DATE);
+  it("contains every rule that is neither selected nor filtered", () => {
+    const result = run(fixtureDataset(), fixtureProfile({ tagFilters: ["Data Source: Elastic Defend"] }), DATE);
     expect(ids(result.noApt)).toEqual(["r-bb", "r-cmd-parent", "r-dos", "r-ingress", "r-obf"]);
   });
 });
@@ -97,11 +106,11 @@ describe("technique frequency table", () => {
     expect(ids(result.selected)).toEqual(["r-lsass", "r-ml"]);
   });
 
-  it("lists the selected and noData rules per technique", () => {
-    const result = run(fixtureDataset(), fixtureProfile({ integrations: ["windows"] }), DATE);
+  it("lists the selected and filtered rules per technique", () => {
+    const result = run(fixtureDataset(), fixtureProfile({ tagFilters: ["Rule Type: ML"] }), DATE);
     const t1003 = result.techniques.find((t) => t.id === "T1003");
     expect(t1003?.selectedRuleIds).toEqual(["r-ml"]);
-    expect(t1003?.noDataRuleIds).toEqual(["r-lsass"]);
+    expect(t1003?.filteredRuleIds).toEqual(["r-lsass"]);
   });
 });
 
@@ -132,10 +141,10 @@ describe("profile resolution", () => {
   });
 });
 
-describe("integration warnings", () => {
-  it("warns about profile integrations missing from the ruleset", () => {
-    const result = run(fixtureDataset(), fixtureProfile({ integrations: ["endpoint", "old_package"] }), DATE);
-    expect(result.warnings).toEqual(["Integration old_package does not exist in Elastic ruleset 9.5.9 and was ignored."]);
+describe("tag warnings", () => {
+  it("warns about ticked tags missing from the ruleset", () => {
+    const result = run(fixtureDataset(), fixtureProfile({ tagFilters: ["OS: Linux", "OS: Solaris"] }), DATE);
+    expect(result.warnings).toEqual(["Tag OS: Solaris does not exist in Elastic ruleset 9.5.9 and was ignored."]);
   });
 });
 
@@ -174,7 +183,7 @@ describe("Dev Tools requests", () => {
   });
 
   it("tags every other rule of the ruleset no-APT, listed by rule_id", () => {
-    const result = run(fixtureDataset(), fixtureProfile({ integrations: ["endpoint"] }), DATE);
+    const result = run(fixtureDataset(), fixtureProfile({ tagFilters: ["Data Source: Elastic Defend"] }), DATE);
     const apply = result.requests.find((r) => r.kind === "noApt" && !r.dryRun);
     expect(apply?.expected).toBe(5);
     expect(apply?.body.query).toBe(
@@ -278,22 +287,22 @@ POST ${BULK}
 });
 
 describe("report", () => {
-  const profile = () => fixtureProfile({ groups: ["G0001", "G0002"], integrations: ["endpoint"] });
+  const profile = () => fixtureProfile({ groups: ["G0001", "G0002"], tagFilters: ["Data Source: Elastic Defend"] });
 
   it("lists the selected rule_ids one per line", () => {
     const result = run(fixtureDataset(), profile(), DATE);
-    expect(result.ruleIdList).toBe("r-lsass\nr-ml\nr-obf\nr-ps\n");
+    expect(result.ruleIdList).toBe("r-lsass\nr-ps\n");
   });
 
   it("exports one CSV row per included technique with its coverage status", () => {
     const result = run(fixtureDataset(), profile(), DATE);
     expect(result.report.csv).toBe(
       [
-        "technique_id,technique_name,group_count,groups,status,selected_rule_ids,missing_integration_rule_ids",
+        "technique_id,technique_name,group_count,groups,status,selected_rule_ids,filtered_rule_ids",
         "T1059.001,PowerShell,2,APT1 (G0001); APT2 (G0002),covered,r-ps,",
-        "T1003,OS Credential Dumping,1,APT1 (G0001),covered,r-lsass; r-ml,",
-        "T1027,Obfuscated Files or Information,1,APT2 (G0002),covered,r-obf,",
-        "T1566.001,Spearphishing Attachment,1,APT1 (G0001),needs integration,,r-phish",
+        "T1003,OS Credential Dumping,1,APT1 (G0001),covered,r-lsass,r-ml",
+        "T1027,Obfuscated Files or Information,1,APT2 (G0002),filtered out,,r-obf",
+        "T1566.001,Spearphishing Attachment,1,APT1 (G0001),filtered out,,r-phish",
         "",
       ].join("\r\n"),
     );
@@ -313,17 +322,24 @@ describe("report", () => {
     expect(result.report.csv).toContain("\r\nT1027,Obfuscated Files or Information,1,APT2 (G0002),no rule,,\r\n");
   });
 
-  it("summarises coverage, gaps and integrations in Markdown", () => {
+  it("summarises coverage, gaps and filtered rules in Markdown", () => {
     const result = run(fixtureDataset(), profile(), DATE);
     const md = result.report.markdown;
     expect(md).toContain("# apt2rule coverage report: Test profile");
     expect(md).toContain("Generated 2026-10-29 · Elastic prebuilt rules 9.5.9 (stack 9.5) · ATT&CK 19.1");
+    expect(md).toContain("- Tag filter: Data Source: Elastic Defend");
     expect(md).toContain("| APT1 (G0001) | 3 | 2 | 1 |");
-    expect(md).toContain("| APT2 (G0002) | 2 | 2 | 0 |");
-    expect(md).toContain("| T1566.001 | Spearphishing Attachment | APT1 (campaign) | 0 | needs integration |");
-    expect(md).toContain("| o365 | 1 | T1566.001 |");
-    expect(md).toContain("| r-ml | Rule r-ml | medium | T1003 | unknown | requires ML job |");
-    expect(md).toContain("- Selected rules (tag `apt2rule:2026-10-29`): 4");
-    expect(md).toContain("- Other prebuilt rules (tag `apt2rule(no-APT):2026-10-29`): 4");
+    expect(md).toContain("| APT2 (G0002) | 2 | 1 | 1 |");
+    expect(md).toContain("| T1566.001 | Spearphishing Attachment | APT1 (campaign) | 0 | filtered out |");
+    expect(md).toContain("| r-phish | Rule r-phish | T1566.001 | Data Source: Microsoft 365 |");
+    expect(md).toContain("| r-lsass | Rule r-lsass | medium | T1003 | Data Source: Elastic Defend, OS: Windows |  |");
+    expect(md).toContain("- Selected rules (tag `apt2rule:2026-10-29`): 2");
+    expect(md).toContain("- Matching rules removed by the tag filter (no tag): 3");
+    expect(md).toContain("- Other rules (tag `apt2rule(no-APT):2026-10-29`): 4");
+  });
+
+  it("notes machine learning rules in the selected rules table", () => {
+    const result = run(fixtureDataset(), fixtureProfile(), DATE);
+    expect(result.report.markdown).toContain("| r-ml | Rule r-ml | medium | T1003 | Rule Type: ML | requires ML job |");
   });
 });

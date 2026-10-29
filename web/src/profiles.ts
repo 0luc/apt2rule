@@ -12,7 +12,7 @@ export function newProfile(dataset: Dataset, name: string): Profile {
     includeSoftware: false,
     minGroups: 1,
     techniqueOverrides: {},
-    integrations: [...dataset.integrations],
+    tagFilters: [],
     includeBuildingBlocks: false,
     includeMl: true,
   };
@@ -65,7 +65,7 @@ export function parseProfile(text: string): Profile {
     includeSoftware: v.includeSoftware === true,
     minGroups: Number.isInteger(v.minGroups) && v.minGroups! >= 1 ? v.minGroups! : 1,
     techniqueOverrides: overrides,
-    integrations: strings(v.integrations) ? v.integrations! : [],
+    tagFilters: strings(v.tagFilters) ? v.tagFilters! : [],
     includeBuildingBlocks: v.includeBuildingBlocks === true,
     includeMl: v.includeMl !== false,
   };

@@ -2,18 +2,18 @@ import type { Dataset, Profile, Rule } from "./types";
 
 /** Hand-built dataset used by the engine tests. Must satisfy schema/dataset.schema.json. */
 export function fixtureDataset(): Dataset {
-  const rule = (ruleId: string, techniques: string[], integrations: string[], extra: Partial<Rule> = {}): Rule => ({
+  const rule = (ruleId: string, techniques: string[], tags: string[], extra: Partial<Rule> = {}): Rule => ({
     ruleId,
     name: `Rule ${ruleId}`,
     type: "eql",
     severity: "medium",
     buildingBlock: false,
-    integrations,
+    tags,
     techniques,
     ...extra,
   });
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     ruleset: { packageVersion: "9.5.9", stackMinor: "9.5" },
     attack: { version: "19.1" },
     builtAt: "2026-10-29T00:00:00Z",
@@ -50,17 +50,26 @@ export function fixtureDataset(): Dataset {
       },
     ],
     rules: [
-      rule("r-ps", ["T1059.001"], ["endpoint", "windows"]),
-      rule("r-cmd-parent", ["T1059"], ["endpoint"]),
-      rule("r-lsass", ["T1003"], ["endpoint"]),
-      rule("r-phish", ["T1566.001"], ["o365"]),
-      rule("r-ingress", ["T1105"], ["network_traffic"]),
+      rule("r-ps", ["T1059.001"], ["Data Source: Elastic Defend", "OS: Windows", "Tactic: Execution"]),
+      rule("r-cmd-parent", ["T1059"], ["Data Source: Elastic Defend", "OS: Windows"]),
+      rule("r-lsass", ["T1003"], ["Data Source: Elastic Defend", "OS: Windows"]),
+      rule("r-phish", ["T1566.001"], ["Data Source: Microsoft 365"]),
+      rule("r-ingress", ["T1105"], ["Data Source: Network Packet Capture"]),
       rule("r-obf", ["T1027"], []),
-      rule("r-bb", ["T1059.001"], ["endpoint"], { buildingBlock: true }),
-      rule("r-ml", ["T1003"], [], { type: "machine_learning" }),
-      rule("r-dos", ["T1499"], ["aws/cloudtrail"]),
+      rule("r-bb", ["T1059.001"], ["Data Source: Elastic Defend", "OS: Linux"], { buildingBlock: true }),
+      rule("r-ml", ["T1003"], ["Rule Type: ML"], { type: "machine_learning" }),
+      rule("r-dos", ["T1499"], ["Data Source: AWS"]),
     ],
-    integrations: ["aws/cloudtrail", "endpoint", "network_traffic", "o365", "windows"],
+    tags: [
+      "Data Source: AWS",
+      "Data Source: Elastic Defend",
+      "Data Source: Microsoft 365",
+      "Data Source: Network Packet Capture",
+      "OS: Linux",
+      "OS: Windows",
+      "Rule Type: ML",
+      "Tactic: Execution",
+    ],
     groupRedirects: { G0099: "G0002" },
     techniqueRedirects: { T1086: "T1059.001" },
   };
@@ -75,7 +84,7 @@ export function fixtureProfile(overrides: Partial<Profile> = {}): Profile {
     includeSoftware: false,
     minGroups: 1,
     techniqueOverrides: {},
-    integrations: ["aws/cloudtrail", "endpoint", "network_traffic", "o365", "windows"],
+    tagFilters: [],
     includeBuildingBlocks: false,
     includeMl: true,
     ...overrides,

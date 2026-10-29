@@ -14,12 +14,12 @@ SCHEMA = json.loads((Path(__file__).parents[2] / "schema" / "dataset.schema.json
 def test_builds_a_dataset_that_satisfies_the_shared_schema(make_package, make_bundle):
     apt1, t = group("G0001", "APT1"), technique("T1003", "OS Credential Dumping")
     dataset = build_dataset(
-        make_package([rule("r1", 1, {"T1003": []}, [{"package": "endpoint"}])], version="9.5.9"),
+        make_package([rule("r1", 1, {"T1003": []}, tags=["OS: Windows"])], version="9.5.9"),
         make_bundle([apt1, t, rel(apt1, "uses", t)]),
         built_at="2026-10-29T00:00:00Z",
     )
     jsonschema.validate(dataset, SCHEMA)
-    assert dataset["schemaVersion"] == 1
+    assert dataset["schemaVersion"] == 2
     assert dataset["ruleset"] == {"packageVersion": "9.5.9", "stackMinor": "9.5"}
     assert dataset["attack"] == {"version": "19.1"}
     assert dataset["builtAt"] == "2026-10-29T00:00:00Z"
