@@ -96,11 +96,12 @@ function render() {
     })
     .join("") || (query ? `<li class="hint">No group matches “${esc(state.search)}”.</li>` : "");
   $("group-count").textContent = String(p.groups.length);
+  $("group-clear").hidden = p.groups.length === 0;
   $("group-selected").innerHTML = p.groups
     .map((id) => {
       const g = groupsById.get(dataset.groupRedirects[id] ?? id);
-      const aliases = g ? otherAliases(g).slice(0, 3).join(", ") : "";
-      return `<li title="${esc(g ? otherAliases(g).join(", ") : "not in this ATT&CK version")}">${esc(g?.name ?? id)}${aliases ? ` <span class="hint">(${esc(aliases)})</span>` : ""}
+      const label = [g?.id ?? id, ...(g ? otherAliases(g).slice(0, 3) : [])].join(", ");
+      return `<li title="${esc(g ? otherAliases(g).join(", ") : "not in this ATT&CK version")}">${esc(g?.name ?? id)} <span class="hint">(${esc(label)})</span>
         <button type="button" data-remove-group="${id}" aria-label="Remove ${esc(g?.name ?? id)}">×</button></li>`;
     })
     .join("");
@@ -321,6 +322,14 @@ function bind() {
     p.groups = [...p.groups, ...added];
     $("group-paste-result").textContent =
       `Added ${added.length} group(s).` + (unmatched.length ? ` Not recognised: ${unmatched.join(", ")}.` : "");
+    update();
+  });
+
+  $("group-clear").addEventListener("click", () => {
+    const p = profile();
+    if (!confirm(`Remove all ${p.groups.length} selected groups?`)) return;
+    p.groups = [];
+    p.minGroups = 1;
     update();
   });
 

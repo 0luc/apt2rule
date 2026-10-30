@@ -58,6 +58,11 @@
           <label>Elastic prebuilt ruleset <select id="ruleset"></select></label>
           <span id="ruleset-info" class="mono hint"></span>
         </div>
+        <p class="hint">
+          Only the newest ruleset per Kibana version is listed. On an older patch, e.g. <code>9.4.15</code>? Pick the one for
+          the same Kibana version (<code>9.4.x</code>). Rules added since then aren't in your Kibana, so the dry run may
+          match a few fewer rules than the snippet's comments expect.
+        </p>
         <details class="help">
           <summary>Which ruleset version is installed in my Kibana?</summary>
           <ol>
@@ -75,10 +80,6 @@
               </div>
             </li>
           </ol>
-          <p class="hint">
-            apt2rule offers the newest ruleset for each Kibana version. If yours is an older patch, update the prebuilt rules in
-            Kibana (Rules → Update) or expect small differences in the dry-run counts.
-          </p>
         </details>
       </section>
 
@@ -97,7 +98,7 @@
             <p id="group-paste-result" class="hint" role="status"></p>
           </div>
         </div>
-        <h3>Selected <span class="count" id="group-count">0</span></h3>
+        <h3>Selected <span class="count" id="group-count">0</span> <button id="group-clear" type="button" class="ghost" hidden>Clear all</button></h3>
         <ul id="group-selected" class="chips"></ul>
       </section>
 
