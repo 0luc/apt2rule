@@ -68,6 +68,7 @@ export function buildMarkdown(input: ReportInput): string {
     `- Selected rules (tag \`${tag}\`): ${selected.length}`,
     `- Matching rules removed by the tag filter (no tag): ${filtered.length}`,
     `- Ignored tags (skipped in Kibana): ${ignorePatterns(profile.ignoreTags).join(", ") || "none"}`,
+    `- Rules disabled after running: ${profile.skipDisabledAfterRun ? "skipped in Kibana" : "tagged"}`,
     "",
     "## Coverage per group",
     "",

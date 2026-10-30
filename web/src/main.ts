@@ -132,6 +132,7 @@ function render() {
   // filters
   $<HTMLInputElement>("include-bb").checked = p.includeBuildingBlocks;
   $<HTMLInputElement>("include-ml").checked = p.includeMl;
+  $<HTMLInputElement>("skip-disabled-run").checked = p.skipDisabledAfterRun;
   renderTagFilter(dataset, p);
 
   // output
@@ -360,6 +361,10 @@ function bind() {
   });
   $("include-ml").addEventListener("change", (e) => {
     profile().includeMl = (e.target as HTMLInputElement).checked;
+    update();
+  });
+  $("skip-disabled-run").addEventListener("change", (e) => {
+    profile().skipDisabledAfterRun = (e.target as HTMLInputElement).checked;
     update();
   });
   $("tag-categories").addEventListener("change", (e) => {

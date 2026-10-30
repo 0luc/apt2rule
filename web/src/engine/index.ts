@@ -61,6 +61,7 @@ export function run(dataset: Dataset, profile: Profile, date: string): Result {
   const requests = buildRequests(
     selected.map((r) => r.ruleId),
     profile.ignoreTags,
+    profile.skipDisabledAfterRun,
     date,
   );
 

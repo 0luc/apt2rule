@@ -47,6 +47,8 @@ export interface Profile {
   tagFilters: string[];
   /** Rules carrying one of these tags in the cluster are skipped. A trailing "*" matches a prefix. */
   ignoreTags: string[];
+  /** Skip rules that are disabled now but have run before: switched off on purpose. */
+  skipDisabledAfterRun: boolean;
   includeBuildingBlocks: boolean;
   includeMl: boolean;
 }

@@ -201,6 +201,16 @@ describe("Dev Tools requests", () => {
     expect(result.requests[0]?.body.query).toBe(SELECTED);
   });
 
+  it("makes Kibana skip rules that are disabled but have run before", () => {
+    const result = run(fixtureDataset(), fixtureProfile({ ignoreTags: ["disabled-*"], skipDisabledAfterRun: true }), DATE);
+    expect(result.requests[0]?.body.query).toBe(
+      `${SELECTED} AND NOT alert.attributes.tags: (disabled-*) AND NOT (alert.attributes.enabled: false AND alert.attributes.lastRun.outcome: *)`,
+    );
+    expect(result.snippets.dryRun).toContain(
+      "# Rules with an ignored tag (disabled-*) or rules that are disabled but have run before are skipped, so Kibana can report fewer than expected.",
+    );
+  });
+
   it("renders a dry-run snippet that changes nothing", () => {
     const result = run(fixtureDataset(), fixtureProfile({ groups: ["G0003"], ignoreTags: ["disabled-*"] }), DATE);
     expect(result.snippets.dryRun).toBe(`# apt2rule DRY RUN: changes nothing

@@ -10,7 +10,7 @@ Turn the APT groups from your threat analysis into tags on the matching Elastic 
 2. Select the MITRE ATT&CK groups relevant to your organisation (search by name or alias, or paste a list).
 3. Narrow the techniques: see how many of your groups use each one, set a minimum, tick techniques in or out.
 4. Optionally filter the rules on their Kibana tags (`Data Source: Elastic Defend`, `OS: Linux`, …). Within a tag category any ticked tag matches; across categories all must match.
-5. Optionally list tags that make Kibana skip a rule, e.g. `disabled-*` (the default; a trailing `*` matches a prefix) for rules you disabled on purpose.
+5. Optionally list tags that make Kibana skip a rule, e.g. `disabled-*` (the default; a trailing `*` matches a prefix) for rules you disabled on purpose. By default Kibana also skips rules that are disabled but have run before: someone switched them off, and unlike a tag that survives Elastic rule updates.
 6. Copy the **Dry run** Kibana Dev Tools snippet and check the counts, then the **Production** snippet. It **only adds one tag**, `apt2rule:<date>`, to the rules that cover your groups' techniques. Rules removed by your tag filter get no tag; the coverage report lists them.
 7. In Kibana, filter the rules table on that tag and bulk-enable after review.
 
@@ -71,6 +71,7 @@ Checked against a real Kibana cluster (dry run and production):
 Still open:
 
 - [ ] What happens to the `apt2rule:` tag when Elastic upgrades a tagged prebuilt rule.
+- [ ] Rules that are disabled but have run before are skipped (`NOT (alert.attributes.enabled: false AND alert.attributes.lastRun.outcome: *)`), and an Elastic upgrade keeps a rule's last run.
 
 ## Attribution
 

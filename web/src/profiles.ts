@@ -17,6 +17,7 @@ export function newProfile(dataset: Dataset, name: string): Profile {
     techniqueOverrides: {},
     tagFilters: [],
     ignoreTags: [...DEFAULT_IGNORE_TAGS],
+    skipDisabledAfterRun: true,
     includeBuildingBlocks: false,
     includeMl: true,
   };
@@ -71,6 +72,7 @@ export function parseProfile(text: string): Profile {
     techniqueOverrides: overrides,
     tagFilters: strings(v.tagFilters) ? v.tagFilters! : [],
     ignoreTags: strings(v.ignoreTags) ? v.ignoreTags! : [...DEFAULT_IGNORE_TAGS],
+    skipDisabledAfterRun: v.skipDisabledAfterRun !== false,
     includeBuildingBlocks: v.includeBuildingBlocks === true,
     includeMl: v.includeMl !== false,
   };

@@ -4,6 +4,8 @@ const BULK_ACTION = "kbn:/api/detection_engine/rules/_bulk_action";
 // Saved-object fields of a detection rule in Kibana's rules KQL (rule_id verified on Kibana 9.x).
 const RULE_ID_FIELD = "alert.attributes.params.ruleId";
 const TAGS_FIELD = "alert.attributes.tags";
+// A disabled rule with a last run was switched off after running (not verified on a real cluster yet).
+const DISABLED_AFTER_RUN = "alert.attributes.enabled: false AND alert.attributes.lastRun.outcome: *";
 
 export function tagName(date: string) {
   return `apt2rule:${date}`;
@@ -11,12 +13,20 @@ export function tagName(date: string) {
 
 /**
  * Builds the add_tags bulk requests for the selected rules, listed by rule_id: one dry run and one
- * apply, each a single request. Rules carrying an ignored tag are excluded by Kibana itself:
- * apt2rule can't see tags added in the cluster.
+ * apply, each a single request. Rules carrying an ignored tag, or disabled after running, are
+ * excluded by Kibana itself: apt2rule can't see the cluster.
  */
-export function buildRequests(selectedIds: string[], ignoreTags: string[], date: string): BulkTagRequest[] {
+export function buildRequests(
+  selectedIds: string[],
+  ignoreTags: string[],
+  skipDisabledAfterRun: boolean,
+  date: string,
+): BulkTagRequest[] {
   if (!selectedIds.length) return [];
-  const query = ruleIdQuery([...selectedIds].sort()) + ignoreClause(ignoreTags);
+  const query =
+    ruleIdQuery([...selectedIds].sort()) +
+    ignoreClause(ignoreTags) +
+    (skipDisabledAfterRun ? ` AND NOT (${DISABLED_AFTER_RUN})` : "");
   return [true, false].map((dryRun) => ({
     dryRun,
     expected: selectedIds.length,
@@ -45,8 +55,12 @@ export function renderSnippets(requests: BulkTagRequest[], dataset: Dataset, pro
     `# Profile ${JSON.stringify(profile.name)} · Elastic prebuilt rules ${dataset.ruleset.packageVersion} ` +
     `(stack ${dataset.ruleset.stackMinor}) · ATT&CK ${dataset.attack.version} · generated ${date}`;
   const patterns = ignorePatterns(profile.ignoreTags);
-  const ignored = patterns.length
-    ? [`# Rules with an ignored tag (${patterns.join(", ")}) are skipped, so Kibana can report fewer than expected.`]
+  const skipped = [
+    ...(patterns.length ? [`with an ignored tag (${patterns.join(", ")})`] : []),
+    ...(profile.skipDisabledAfterRun ? ["that are disabled but have run before"] : []),
+  ];
+  const ignored = skipped.length
+    ? [`# Rules ${skipped.join(" or rules ")} are skipped, so Kibana can report fewer than expected.`]
     : [];
   const install = "# Before running: install all Elastic prebuilt rules in Kibana (Rules > Add Elastic rules)";
   const render = (dryRun: boolean, header: string[]) =>

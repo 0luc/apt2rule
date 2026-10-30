@@ -86,6 +86,7 @@ export function fixtureProfile(overrides: Partial<Profile> = {}): Profile {
     techniqueOverrides: {},
     tagFilters: [],
     ignoreTags: [],
+    skipDisabledAfterRun: false,
     includeBuildingBlocks: false,
     includeMl: true,
     ...overrides,

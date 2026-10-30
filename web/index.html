@@ -137,6 +137,13 @@
           Comma-separated. End a tag with <code>*</code> to match everything that starts with it, e.g. <code>disabled-*</code>.
           apt2rule can't see your cluster, so Kibana skips these rules when you run the snippet; the dry run shows the real count.
         </p>
+        <div class="row">
+          <label class="check"><input id="skip-disabled-run" type="checkbox" /> Skip rules that were disabled after running</label>
+        </div>
+        <p class="hint">
+          A rule that is disabled but has a last run was switched off on purpose, e.g. because it was noisy. Unlike a tag, its
+          disabled state survives Elastic rule updates. Rules that never ran (freshly installed) and enabled rules are still tagged.
+        </p>
         <div id="tag-categories"></div>
       </section>
 
