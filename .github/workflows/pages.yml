@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "17 3 * * *" # nightly: pick up new Elastic rulesets and ATT&CK releases
+    - cron: "7 18 * * *" # daily, 19:07 CET / 20:07 CEST: pick up new Elastic rulesets and ATT&CK releases
   workflow_dispatch:
 
 permissions:
