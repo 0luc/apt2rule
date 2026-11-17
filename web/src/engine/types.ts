@@ -1,3 +1,5 @@
+import type { GroupReason } from "../threat2apt/types";
+
 /** Compact dataset for one ruleset version. Contract: schema/dataset.schema.json */
 export interface Dataset {
   schemaVersion: 2;
@@ -51,6 +53,8 @@ export interface Profile {
   skipDisabledAfterRun: boolean;
   includeBuildingBlocks: boolean;
   includeMl: boolean;
+  /** Why each group was selected, for groups sent by threat2apt. Groups without one were added by hand. */
+  reasons?: Record<string, GroupReason>;
 }
 
 export interface TechniqueRow {

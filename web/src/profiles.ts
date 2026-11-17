@@ -1,4 +1,5 @@
 import type { Dataset, Profile } from "./engine";
+import { isReason, type GroupReason } from "./engine/reason";
 
 const PROFILES_KEY = "apt2rule.profiles";
 const CURRENT_KEY = "apt2rule.current";
@@ -58,6 +59,10 @@ export function parseProfile(text: string): Profile {
   if (!v || typeof v !== "object" || v.schemaVersion !== 1 || typeof v.name !== "string" || !strings(v.groups)) {
     throw new Error("not an apt2rule profile (schemaVersion 1)");
   }
+  const reasons: Record<string, GroupReason> = {};
+  for (const [id, reason] of Object.entries(v.reasons ?? {})) {
+    if (v.groups!.includes(id) && isReason(reason)) reasons[id] = reason;
+  }
   const overrides: Profile["techniqueOverrides"] = {};
   for (const [id, value] of Object.entries(v.techniqueOverrides ?? {})) {
     if (value === "include" || value === "exclude") overrides[id] = value;
@@ -75,5 +80,6 @@ export function parseProfile(text: string): Profile {
     skipDisabledAfterRun: v.skipDisabledAfterRun !== false,
     includeBuildingBlocks: v.includeBuildingBlocks === true,
     includeMl: v.includeMl !== false,
+    reasons,
   };
 }

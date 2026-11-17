@@ -1,3 +1,4 @@
+import { describeReason } from "./reason";
 import { ignorePatterns } from "./snippet";
 import type { Dataset, Group, Profile, Rule, TechniqueRow } from "./types";
 
@@ -74,11 +75,12 @@ export function buildMarkdown(input: ReportInput): string {
     "",
   );
   table(
-    ["Group", "Techniques", "Covered", "Gaps"],
+    ["Group", "Why selected", "Techniques", "Covered", "Gaps"],
     groups.map((g) => {
       const own = included.filter((t) => t.groups.some((x) => x.id === g.id));
       const ok = own.filter((t) => techniqueStatus(t) === "covered").length;
-      return [`${g.name} (${g.id})`, String(own.length), String(ok), String(own.length - ok)];
+      const reason = describeReason(profile.reasons?.[g.id]);
+      return [`${g.name} (${g.id})`, reason, String(own.length), String(ok), String(own.length - ok)];
     }),
   );
 

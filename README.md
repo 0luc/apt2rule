@@ -14,6 +14,14 @@ Turn the APT groups from your threat analysis into tags on the matching Elastic 
 6. Copy the **Dry run** Kibana Dev Tools snippet and check the counts, then the **Production** snippet. It **only adds one tag**, `apt2rule:<date>`, to the rules that cover your groups' techniques. Rules removed by your tag filter get no tag; the coverage report lists them.
 7. In Kibana, filter the rules table on that tag and bulk-enable after review.
 
+Not sure which groups to pick? **[threat2apt](https://0luc.github.io/apt2rule/threat2apt/)** suggests them:
+
+1. Tick the countries your threat assessment names, and the regions, sectors or countries your organisation belongs to.
+2. threat2apt reads every ATT&CK group and campaign description. Tier 1: attributed to a ticked country *and* targeting something like you. Tier 2: target match only. Tier 3: country only. Each suggestion shows the sentences that prove it.
+3. Tick the groups you agree with and **Send to apt2rule**: they arrive with their reasons, which also appear in the coverage report. Or copy them as a Markdown or CSV table for your threat analysis.
+
+Attribution is read from description text (ATT&CK has no country field) and can be wrong or missing: check the evidence. See [ADR 0001](docs/adr/0001-threat2apt-group-suggestions.md).
+
 Everything runs in your browser. Profiles are stored in your browser's local storage and can be exported as JSON. apt2rule never connects to your cluster.
 
 ## Before you run the snippet
@@ -28,10 +36,13 @@ Everything runs in your browser. Profiles are stored in your browser's local sto
 
 ```
 pipeline/   Python. Downloads Elastic prebuilt rule packages (Elastic Package Registry) and
-            MITRE ATT&CK STIX data, and writes one compact dataset per ruleset version.
-schema/     JSON Schema of that dataset: the contract between pipeline and site.
-web/        TypeScript static site. The engine (src/engine) is a pure function
-            (dataset, profile, date) -> result; the UI is a thin layer on top.
+            MITRE ATT&CK STIX data, and writes one compact dataset per ruleset version,
+            plus threat2apt.json (groups with country attribution and searchable text).
+schema/     JSON Schemas of those datasets: the contract between pipeline and site.
+web/        TypeScript static site with two pages. The engine (src/engine) is a pure function
+            (dataset, profile, date) -> result; the UI is a thin layer on top. threat2apt
+            (threat2apt/, src/threat2apt) has its own engine and hands groups to apt2rule
+            through the browser's local storage.
 ```
 
 - Ruleset versions: the latest GA patch of every stack minor from 8.19 up.

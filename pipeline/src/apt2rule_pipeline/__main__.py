@@ -2,7 +2,8 @@
 
     python -m apt2rule_pipeline --out ../web/public/data --cache .cache
 
-Writes one ruleset-<version>.json per planned build plus index.json. Nothing is written
+Writes one ruleset-<version>.json per planned build, threat2apt.json (built from the newest
+ATT&CK version among those builds) and index.json. Nothing is written
 unless every build succeeds, so a broken source never replaces a good dataset.
 """
 
@@ -15,6 +16,7 @@ from pathlib import Path
 
 from .dataset import PipelineError, build_dataset
 from .plan import plan_builds
+from .threat2apt import build_threat2apt
 
 EPR_SEARCH = "https://epr.elastic.co/search?package=security_detection_engine&all=true"
 EPR_DOWNLOAD = "https://epr.elastic.co/epr/security_detection_engine/security_detection_engine-{version}.zip"
@@ -47,16 +49,23 @@ def main(argv: list[str] | None = None) -> int:
             raise PipelineError(f"expected ATT&CK {build['attackVersion']}, bundle says {dataset['attack']['version']}")
         outputs[f"ruleset-{build['packageVersion']}.json"] = dataset
 
+    newest_attack = max((b["attackVersion"] for b in builds), key=lambda v: tuple(int(x) for x in v.split(".")))
+    print(f"building threat2apt with ATT&CK {newest_attack}", file=sys.stderr)
+    outputs["threat2apt.json"] = build_threat2apt(
+        _cached(args.cache, ATTACK_BUNDLE.format(version=newest_attack)), built_at=built_at
+    )
+
     index = {
         "builtAt": built_at,
         "versions": [{**b, "file": f"ruleset-{b['packageVersion']}.json"} for b in builds],
+        "threat2apt": {"attackVersion": newest_attack, "file": "threat2apt.json"},
     }
     args.out.mkdir(parents=True, exist_ok=True)
     for name, data in {**outputs, "index.json": index}.items():
         tmp = args.out / f".{name}.tmp"
         tmp.write_text(json.dumps(data, separators=(",", ":"), ensure_ascii=False))
         tmp.replace(args.out / name)
-    print(f"wrote {len(outputs)} rulesets to {args.out}", file=sys.stderr)
+    print(f"wrote {len(outputs) - 1} rulesets and threat2apt to {args.out}", file=sys.stderr)
     return 0
 
 

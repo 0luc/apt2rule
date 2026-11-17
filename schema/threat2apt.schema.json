@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://0luc.github.io/apt2rule/schema/threat2apt.schema.json",
+  "title": "threat2apt dataset",
+  "description": "ATT&CK groups with their country attribution, last seen and searchable description text. Produced by the pipeline from the newest ATT&CK version the site uses, consumed by the threat2apt page.",
+  "type": "object",
+  "required": ["schemaVersion", "attack", "builtAt", "countries", "groups"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "attack": {
+      "type": "object",
+      "required": ["version"],
+      "additionalProperties": false,
+      "properties": { "version": { "type": "string" } }
+    },
+    "builtAt": { "type": "string" },
+    "countries": {
+      "description": "Every country the pipeline knows. terms: the name first, then adjectives and abbreviations; capitalised terms match case-sensitively.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "name", "terms"],
+        "additionalProperties": false,
+        "properties": {
+          "code": { "$ref": "#/definitions/countryCode" },
+          "name": { "type": "string" },
+          "terms": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+        }
+      }
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "aliases", "attribution", "lastSeen", "texts"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "#/definitions/groupId" },
+          "name": { "type": "string" },
+          "aliases": { "description": "Aliases other than the name.", "type": "array", "items": { "type": "string" } },
+          "attribution": {
+            "description": "Attributed countries in order of first evidence. Empty when unknown.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["country", "evidence", "source"],
+              "additionalProperties": false,
+              "properties": {
+                "country": { "$ref": "#/definitions/countryCode" },
+                "evidence": { "description": "The sentence that names the attribution, or an override's reason.", "type": "string" },
+                "source": { "description": "Group or campaign ID the evidence comes from, or \"override\".", "type": "string", "pattern": "^([GC]\\d{4}|override)$" }
+              }
+            }
+          },
+          "lastSeen": { "description": "Latest last_seen (YYYY-MM-DD) of the group's campaigns; null without campaigns.", "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "texts": {
+            "description": "The group's description first, then those of its attributed campaigns. Plain text, paragraphs separated by a blank line.",
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["source", "name", "text"],
+              "additionalProperties": false,
+              "properties": {
+                "source": { "type": "string", "pattern": "^[GC]\\d{4}$" },
+                "name": { "type": "string" },
+                "text": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "groupId": { "type": "string", "pattern": "^G\\d{4}$" },
+    "countryCode": { "type": "string", "pattern": "^[A-Z]{2}$" }
+  }
+}

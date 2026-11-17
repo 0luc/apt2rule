@@ -1,4 +1,6 @@
 import { run, tagCategory, techniqueStatus, type Dataset, type Group, type Profile, type Result } from "./engine";
+import { describeReason } from "./engine/reason";
+import { clearHandoff, readHandoff, type Handoff } from "./handoff";
 import { loadProfiles, newProfile, parseProfile, saveProfiles } from "./profiles";
 
 interface IndexFile {
@@ -20,6 +22,7 @@ const state = {
   tab: "snippet",
   snippetMode: "dryRun" as "dryRun" | "apply",
   result: null as Result | null,
+  handoff: null as Handoff | null,
 };
 
 function profile(): Profile {
@@ -101,10 +104,15 @@ function render() {
     .map((id) => {
       const g = groupsById.get(dataset.groupRedirects[id] ?? id);
       const label = [g?.id ?? id, ...(g ? otherAliases(g).slice(0, 3) : [])].join(", ");
-      return `<li title="${esc(g ? otherAliases(g).join(", ") : "not in this ATT&CK version")}">${esc(g?.name ?? id)} <span class="hint">(${esc(label)})</span>
+      const reason = p.reasons?.[id];
+      const why = reason
+        ? `<span class="reason" title="${esc(describeReason(reason))}" aria-label="Why: ${esc(describeReason(reason))}">T${reason.tier}</span>`
+        : "";
+      return `<li title="${esc(g ? otherAliases(g).join(", ") : "not in this ATT&CK version")}">${why}${esc(g?.name ?? id)} <span class="hint">(${esc(label)})</span>
         <button type="button" data-remove-group="${id}" aria-label="Remove ${esc(g?.name ?? id)}">×</button></li>`;
     })
     .join("");
+  renderHandoff(dataset);
 
   // techniques
   $<HTMLInputElement>("include-software").checked = p.includeSoftware;
@@ -156,6 +164,44 @@ function render() {
     tab.setAttribute("aria-selected", String(tab.dataset.tab === state.tab));
   }
   for (const panel of document.querySelectorAll<HTMLElement>("[data-panel]")) panel.hidden = panel.dataset.panel !== state.tab;
+}
+
+/** Banner offering the groups threat2apt sent. */
+function renderHandoff(dataset: Dataset) {
+  const box = $("handoff");
+  const h = state.handoff;
+  box.hidden = !h;
+  if (!h) return;
+  const known = new Set([...dataset.groups.map((g) => g.id), ...Object.keys(dataset.groupRedirects)]);
+  const missing = h.groups.filter((g) => !known.has(g.id));
+  box.innerHTML = `<p><strong>${h.groups.length} group(s) from threat2apt</strong> (profile “${esc(h.profile)}”, ATT&amp;CK ${esc(h.attackVersion)}):
+      ${esc(h.groups.map((g) => g.name).join(", "))}.</p>
+    ${missing.length ? `<p class="hint">Not in ATT&amp;CK ${esc(dataset.attack.version)} of this ruleset: ${esc(missing.map((g) => `${g.name} (${g.id})`).join(", "))}. They are added anyway and listed as warnings.</p>` : ""}
+    <div class="actions">
+      <button type="button" data-handoff="current">Add to “${esc(state.current)}”</button>
+      <button type="button" data-handoff="new" class="ghost">Add to a new profile</button>
+      <button type="button" data-handoff="dismiss" class="danger">Dismiss</button>
+    </div>
+    <p class="hint">Adding never removes groups you already selected.</p>`;
+}
+
+/** Adds the handed-off groups and their reasons to a profile; never removes anything. */
+async function acceptHandoff(mode: string) {
+  const h = state.handoff;
+  state.handoff = null;
+  clearHandoff();
+  if (!h || mode === "dismiss") return render();
+  if (mode === "new") {
+    const p = newProfile(state.dataset!, uniqueName(`threat2apt: ${h.profile}`));
+    state.profiles[p.name] = p;
+    state.current = p.name;
+  }
+  const p = profile();
+  const reasons = { ...(p.reasons ?? {}) };
+  for (const g of h.groups) reasons[g.id] = g.reason;
+  p.groups = [...p.groups, ...h.groups.map((g) => g.id).filter((id) => !p.groups.includes(id))];
+  p.reasons = reasons;
+  await selectProfile(state.current);
 }
 
 function setTag(tag: string, on: boolean) {
@@ -298,8 +344,9 @@ function bind() {
     render();
   });
   document.addEventListener("click", (e) => {
-    const target = (e.target as HTMLElement).closest<HTMLElement>("[data-add-group],[data-remove-group],[data-tab],[data-mode]");
+    const target = (e.target as HTMLElement).closest<HTMLElement>("[data-add-group],[data-remove-group],[data-tab],[data-mode],[data-handoff]");
     if (!target) return;
+    if (target.dataset.handoff) return void acceptHandoff(target.dataset.handoff);
     if (target.dataset.mode) {
       state.snippetMode = target.dataset.mode === "apply" ? "apply" : "dryRun";
       return render();
@@ -309,6 +356,10 @@ function bind() {
       p.groups = [...p.groups, target.dataset.addGroup];
     } else if (target.dataset.removeGroup) {
       p.groups = p.groups.filter((g) => g !== target.dataset.removeGroup);
+      if (p.reasons) {
+        const { [target.dataset.removeGroup]: _, ...rest } = p.reasons;
+        p.reasons = rest;
+      }
       p.minGroups = Math.min(p.minGroups, Math.max(1, p.groups.length));
     } else if (target.dataset.tab) {
       state.tab = target.dataset.tab;
@@ -330,6 +381,7 @@ function bind() {
     const p = profile();
     if (!confirm(`Remove all ${p.groups.length} selected groups?`)) return;
     p.groups = [];
+    p.reasons = {};
     p.minGroups = 1;
     update();
   });
@@ -457,6 +509,7 @@ async function start() {
       const p = newProfile(newest, "My threat profile");
       state.profiles[p.name] = p;
     }
+    state.handoff = readHandoff();
     bind();
     await selectProfile(current && current in state.profiles ? current : Object.keys(state.profiles).sort()[0]!);
   } catch (err) {

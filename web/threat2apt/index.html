@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>threat2apt</title>
+    <meta name="description" content="Suggest the MITRE ATT&CK groups that matter to your organisation, from the countries and targets in your threat assessment." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%233dd6c4' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='16' cy='16' r='13' fill='%23111b24' stroke-width='1.8'/%3E%3Ccircle cx='16' cy='16' r='8' stroke-width='1.4'/%3E%3Ccircle cx='16' cy='16' r='2.6' fill='%233dd6c4' stroke='none'/%3E%3Cpath d='M16 1.5v6M16 24.5v6M1.5 16h6M24.5 16h6' stroke-width='1.6'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="../src/style.css" />
+    <link rel="stylesheet" href="../src/threat2apt/threat2apt.css" />
+  </head>
+  <body class="t2a">
+    <header class="masthead">
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+          <circle class="logo-triangle" cx="16" cy="16" r="13" />
+          <circle class="logo-eye" cx="16" cy="16" r="8" />
+          <circle class="logo-pupil" cx="16" cy="16" r="2.6" />
+          <path class="logo-eye" d="M16 1.5v6M16 24.5v6M1.5 16h6M24.5 16h6" />
+        </svg>
+        <div>
+          <h1>threat2apt</h1>
+          <p class="tagline">Threat assessment → ATT&amp;CK groups → <a href="../">apt2rule</a></p>
+        </div>
+      </div>
+      <ul class="badges" aria-label="Properties">
+        <li>MITRE ATT&amp;CK®</li>
+        <li>Evidence for every pick</li>
+        <li>Runs in your browser</li>
+      </ul>
+      <p class="lede">
+        Tick the countries your threat assessment names and what your organisation is: its region, sector or country.
+        threat2apt searches every ATT&amp;CK group and campaign description and suggests the groups that match, with the
+        sentences that prove it. <strong>You decide</strong>, then send your picks to apt2rule. Nothing you tick leaves your browser.
+      </p>
+      <aside class="disclaimer" role="note">
+        <strong>Disclaimer.</strong> This product is fully vibe coded (built with AI assistance) and comes with no
+        guarantees. Attribution is read from ATT&amp;CK's description text and can be wrong or missing: check the evidence.
+      </aside>
+    </header>
+
+    <div class="t2a-layout">
+      <aside class="t2a-settings" aria-label="Settings">
+        <section class="panel" aria-labelledby="t2a-profile-h">
+          <h2 id="t2a-profile-h"><span class="step">00</span> Profile</h2>
+          <div class="row">
+            <label class="wide">Profile <select id="profile-select"></select></label>
+            <label class="wide">Name <input id="profile-name" type="text" autocomplete="off" /></label>
+          </div>
+          <div class="actions">
+            <button id="profile-new" type="button" class="ghost">New</button>
+            <button id="profile-export" type="button" class="ghost">Export JSON</button>
+            <label class="button ghost">Import JSON <input id="profile-import" type="file" accept="application/json,.json" hidden /></label>
+            <button id="profile-delete" type="button" class="danger">Delete</button>
+          </div>
+          <p class="hint">Saved in this browser only. Export to back up or share.</p>
+        </section>
+
+        <section class="panel" aria-labelledby="t2a-countries-h">
+          <h2 id="t2a-countries-h"><span class="step">01</span> Threat countries</h2>
+          <p class="hint">The countries whose state actors your threat assessment names. Groups attributed to them match on country.</p>
+          <input id="country-search" type="search" placeholder="Filter countries" autocomplete="off" aria-label="Filter countries" />
+          <ul id="country-list" class="checklist t2a-list"></ul>
+          <p class="hint">Only countries ATT&amp;CK groups are attributed to are listed. The number is how many groups.</p>
+        </section>
+
+        <section class="panel" aria-labelledby="t2a-targets-h">
+          <h2 id="t2a-targets-h"><span class="step">02</span> Targets like you</h2>
+          <p class="hint">Your region, sector and country. A group matches when its or its campaigns' descriptions name one of the terms.</p>
+          <input id="target-search" type="search" placeholder="Filter regions, sectors, countries" autocomplete="off" aria-label="Filter targets" />
+          <div id="target-list"></div>
+          <label class="wide">Extra terms (comma or new line)
+            <textarea id="custom-terms" rows="2" placeholder="e.g. port, satellite"></textarea>
+          </label>
+          <p class="hint">Whole words; terms in capitals (EU, US, NATO) match case-sensitively.</p>
+        </section>
+
+        <section class="panel" aria-labelledby="t2a-filters-h">
+          <h2 id="t2a-filters-h"><span class="step">03</span> Show</h2>
+          <fieldset class="t2a-tiers">
+            <legend class="hint">Tiers</legend>
+            <label class="check"><input type="checkbox" data-tier="1" /> Tier 1: country and target</label>
+            <label class="check"><input type="checkbox" data-tier="2" /> Tier 2: target only</label>
+            <label class="check"><input type="checkbox" data-tier="3" /> Tier 3: country only</label>
+          </fieldset>
+          <div class="row">
+            <label>Seen since (year) <input id="seen-since" type="number" min="2000" max="2100" step="1" placeholder="any" /></label>
+            <label class="check"><input id="hide-unknown" type="checkbox" /> Also hide unknown</label>
+          </div>
+          <p class="hint">Last seen comes from a group's campaigns. Most groups have none: their last seen is unknown and they stay visible unless you tick “also hide unknown”.</p>
+        </section>
+      </aside>
+
+      <main class="t2a-results" aria-labelledby="t2a-results-h">
+        <h2 id="t2a-results-h" class="sr-only">Suggested groups</h2>
+        <div id="summary" class="stats"></div>
+        <div id="results"></div>
+      </main>
+    </div>
+
+    <div class="t2a-bar" role="region" aria-label="Selection">
+      <span><strong id="picked-count" class="count">0</strong> group(s) ticked</span>
+      <div class="actions">
+        <button id="send" type="button">Send to apt2rule →</button>
+        <button id="copy-md" type="button" class="ghost">Copy Markdown table</button>
+        <button id="download-csv" type="button" class="ghost">Download CSV</button>
+      </div>
+    </div>
+
+    <footer>
+      <p class="disclaimer-footer">Fully vibe coded, no guarantees: always check the evidence before relying on a pick.</p>
+      <p>
+        Group data: <a href="https://attack.mitre.org/">MITRE ATT&amp;CK®</a>, © The MITRE Corporation, used under the
+        <a href="https://attack.mitre.org/resources/legal-and-branding/terms-of-use/">ATT&amp;CK terms of use</a>. threat2apt is
+        not affiliated with or endorsed by MITRE.
+      </p>
+      <p class="mono"><span id="built-at"></span> · <a href="https://github.com/0luc/apt2rule">source (MIT)</a></p>
+    </footer>
+    <script type="module" src="../src/threat2apt/main.ts"></script>
+  </body>
+</html>

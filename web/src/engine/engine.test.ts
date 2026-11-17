@@ -306,14 +306,31 @@ describe("report", () => {
     expect(md).toContain("# apt2rule coverage report: Test profile");
     expect(md).toContain("Generated 2026-10-29 · Elastic prebuilt rules 9.5.9 (stack 9.5) · ATT&CK 19.1");
     expect(md).toContain("- Tag filter: Data Source: Elastic Defend");
-    expect(md).toContain("| APT1 (G0001) | 3 | 2 | 1 |");
-    expect(md).toContain("| APT2 (G0002) | 2 | 1 | 1 |");
+    expect(md).toContain("| APT1 (G0001) | manual | 3 | 2 | 1 |");
+    expect(md).toContain("| APT2 (G0002) | manual | 2 | 1 | 1 |");
     expect(md).toContain("| T1566.001 | Spearphishing Attachment | APT1 (campaign) | 0 | filtered out |");
     expect(md).toContain("| r-phish | Rule r-phish | T1566.001 | Data Source: Microsoft 365 |");
     expect(md).toContain("| r-lsass | Rule r-lsass | medium | T1003 | Data Source: Elastic Defend, OS: Windows |  |");
     expect(md).toContain("- Selected rules (tag `apt2rule:2026-10-29`): 2");
     expect(md).toContain("- Matching rules removed by the tag filter (no tag): 3");
     expect(md).toContain("- Ignored tags (skipped in Kibana): none");
+  });
+
+  it("says why each group was selected when threat2apt sent it", () => {
+    const reason = {
+      source: "threat2apt" as const,
+      date: "2026-11-17",
+      profile: "Yearly",
+      attackVersion: "19.1",
+      tier: 1 as const,
+      countries: [{ code: "RU", name: "Russia", evidence: "Attributed to Russia.", source: "G0001" }],
+      matched: [{ target: "West", terms: ["NATO", "European"] }],
+      lastSeen: null,
+    };
+    const result = run(fixtureDataset(), fixtureProfile({ ...profile(), reasons: { G0001: reason } }), DATE);
+    expect(result.report.markdown).toContain(
+      "| APT1 (G0001) | threat2apt tier 1 · attributed to Russia · targets West (NATO, European) · last seen unknown (profile “Yearly”, 2026-11-17) | 3 | 2 | 1 |",
+    );
   });
 
   it("notes machine learning rules in the selected rules table", () => {
