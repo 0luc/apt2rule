@@ -18,7 +18,7 @@ const state = {
   current: "",
   search: "",
   tagSearch: "",
-  openCategories: new Set<string>(["Data Source", "OS"]),
+  openCategories: new Set<string>(["OS"]),
   tab: "snippet",
   snippetMode: "dryRun" as "dryRun" | "apply",
   result: null as Result | null,
@@ -121,17 +121,21 @@ function render() {
   slider.value = String(p.minGroups);
   $("min-groups-out").textContent = String(p.minGroups);
   $("technique-table").innerHTML = result.techniques.length
-    ? `<thead><tr><th>Include</th><th>Technique</th><th>Groups</th><th>Rules</th><th>Status</th></tr></thead><tbody>` +
+    ? `<thead><tr><th>Include</th><th>Technique</th><th class="tech-groups-wide">Groups</th><th>Rules</th><th class="tech-groups-wide">Status</th></tr></thead><tbody>` +
       result.techniques
         .map((t) => {
           const status = techniqueStatus(t);
+          const statusClass = status === "covered" ? "status-covered" : "status-gap";
+          const statusText = t.included ? status : "excluded";
           const groups = t.groups.map((g) => `${groupsById.get(g.id)?.name ?? g.id} (${g.via.join(", ")})`).join("; ");
           return `<tr class="${t.included ? "" : "excluded"}">
             <td><input type="checkbox" data-technique="${t.id}" ${t.included ? "checked" : ""} aria-label="Include ${t.id}"></td>
-            <td><a href="https://attack.mitre.org/techniques/${t.id.replace(".", "/")}/" target="_blank" rel="noopener">${t.id}</a> ${esc(t.name)}</td>
-            <td>${t.count} <span class="hint">${esc(groups)}</span></td>
-            <td>${t.selectedRuleIds.length}${t.filteredRuleIds.length ? ` <span class="hint">+${t.filteredRuleIds.length} filtered out</span>` : ""}</td>
-            <td class="${status === "covered" ? "status-covered" : "status-gap"}">${t.included ? status : "excluded"}</td></tr>`;
+            <td><a href="https://attack.mitre.org/techniques/${t.id.replace(".", "/")}/" target="_blank" rel="noopener">${t.id}</a> ${esc(t.name)}
+              <span class="hint tech-groups-narrow">${t.count} group(s): ${esc(groups)}</span></td>
+            <td class="tech-groups-wide">${t.count} <span class="hint">${esc(groups)}</span></td>
+            <td>${t.selectedRuleIds.length}${t.filteredRuleIds.length ? ` <span class="hint">+${t.filteredRuleIds.length} filtered out</span>` : ""}
+              <span class="tech-groups-narrow ${statusClass}">${statusText}</span></td>
+            <td class="tech-groups-wide ${statusClass}">${statusText}</td></tr>`;
         })
         .join("") +
       "</tbody>"
@@ -147,9 +151,15 @@ function render() {
   $("warnings").innerHTML = result.warnings.map((w) => `<li>${esc(w)}</li>`).join("");
   const stat = (n: number, label: string, tag: string, kind: string) =>
     `<div class="stat ${kind}"><span class="stat-n">${n}</span><span class="stat-label">${label}</span>${tag ? `<code>${esc(tag)}</code>` : ""}</div>`;
+  const total = dataset.rules.length;
+  const share = total ? Math.round((100 * result.selected.length) / total) : 0;
   $("summary").innerHTML =
-    stat(result.selected.length, "rules to enable", result.tag, "stat-enable") +
-    stat(result.filtered.length, "matching rules removed by tag filter", "no tag", "stat-filtered");
+    stat(result.selected.length, `rules to enable, ${share}% of the ${total} in this ruleset`, result.tag, "stat-enable") +
+    stat(result.filtered.length, "matching rules removed by tag filter", "no tag", "stat-filtered") +
+    (share >= 50 && p.groups.length > 1
+      ? `<p class="stats-note">That is most of the ruleset: common techniques such as PowerShell are used by almost every group.
+          Raise “used by at least” in step 03 to keep what your groups share, or narrow with tags in step 04.</p>`
+      : "");
   $("tag-selected").textContent = result.tag;
   const ignoreInput = $<HTMLInputElement>("ignore-tags");
   if (document.activeElement !== ignoreInput) ignoreInput.value = p.ignoreTags.join(", ");

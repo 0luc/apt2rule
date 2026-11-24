@@ -78,6 +78,12 @@ describe("your area", () => {
     expect(coin?.picked).toBe(false);
   });
 
+  it("drops regions named only through a country it also lists", () => {
+    // Operation Lantern: "NATO members and the U.S. defense sector"; North America only matched "U.S."
+    const panda = suggest(ctx, fixtureProfile({ countries: ["CN"], area: ["region:europe"] }))[0]!;
+    expect(panda.locationMatches.map((m) => m.label)).toEqual(["West", "International organisations", "United States"]);
+  });
+
   it("hides groups that only target elsewhere when asked", () => {
     expect(rows({ area: ["region:europe"], hideElsewhere: true }).map((r) => r[0])).toEqual(["G0001"]);
   });

@@ -108,7 +108,7 @@
         <h2 id="techniques-h"><span class="step">03</span> Techniques</h2>
         <div class="row">
           <label class="check"><input id="include-software" type="checkbox" /> Include techniques from the groups' software</label>
-          <label class="slider">Used by at least <span><input id="min-groups" type="range" min="1" max="1" value="1" /> <output id="min-groups-out">1</output></span> selected group(s)</label>
+          <label class="slider">Used by at least <input id="min-groups" type="range" min="1" max="1" value="1" /> <output id="min-groups-out">1</output> selected group(s)</label>
         </div>
         <p class="hint">Untick a technique to exclude it, or tick one below the threshold to include it anyway.</p>
         <div class="table-wrap"><table id="technique-table"></table></div>
@@ -126,7 +126,7 @@
           Defend rules for Linux or Windows. Nothing ticked means no filter.
         </p>
         <div class="row">
-          <label>Search tags <input id="tag-search" type="search" placeholder="e.g. Defend, Linux, AWS" autocomplete="off" /></label>
+          <label class="wide">Search tags <input id="tag-search" type="search" placeholder="e.g. Defend, Linux, AWS" autocomplete="off" /></label>
           <button id="tag-clear" type="button" class="danger">Clear filter</button>
         </div>
         <ul id="tag-chips" class="chips"></ul>

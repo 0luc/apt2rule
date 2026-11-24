@@ -139,7 +139,7 @@ export function suggest(ctx: Context, profile: T2aProfile): Suggestion[] {
       ransomwareMatch,
       targetMatches,
       location,
-      locationMatches: location === "elsewhere" ? places : inArea,
+      locationMatches: withoutCountryRegions(location === "elsewhere" ? places : inArea),
       excludedBy,
       defaultPicked,
       picked: profile.picks[group.id] ?? defaultPicked,
@@ -153,6 +153,15 @@ export function suggest(ctx: Context, profile: T2aProfile): Suggestion[] {
       (b.group.lastSeen ?? "").localeCompare(a.group.lastSeen ?? "") ||
       a.group.name.localeCompare(b.group.name),
   );
+}
+
+/**
+ * Drops regions that only matched through a country also in the list: "United States" makes West, North America
+ * and the United States; only the country says something. Regions named in their own words ("Asia") stay.
+ */
+function withoutCountryRegions(matches: TargetMatch[]): TargetMatch[] {
+  const countrySpans = new Set(matches.filter((m) => m.target.startsWith("country:")).flatMap((m) => m.hits.map((h) => `${h.text}:${h.start}`)));
+  return matches.filter((m) => m.target.startsWith("country:") || m.hits.some((h) => !countrySpans.has(`${h.text}:${h.start}`)));
 }
 
 /** The exclusion rules of the group's threats (ticked countries, ransomware) that its texts match. */

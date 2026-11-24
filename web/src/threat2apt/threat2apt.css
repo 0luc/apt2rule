@@ -38,7 +38,7 @@ body.t2a { max-width: 92rem; padding-bottom: 6rem; }
 .t2a-settings input[type="number"] { width: 7rem; font: inherit; color: var(--text); background: var(--code-bg); border: 1px solid var(--border-strong); border-radius: 6px; padding: 0.42rem 0.6rem; }
 
 /* results */
-.t2a-results .stats { margin-top: 0; }
+.t2a-results .stats { margin-top: 0; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); }
 .stat-tier1 { border-left-color: var(--accent); }
 .stat-tier1 .stat-n { color: var(--accent); }
 .stat-tier2 { border-left-color: var(--amber); }
