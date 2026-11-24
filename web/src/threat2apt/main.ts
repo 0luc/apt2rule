@@ -137,7 +137,7 @@ function renderExclusions(ctx: Context, p: T2aProfile) {
   const optgroups = (["threat", "sector", "region", "country"] as const)
     .map((kind) => `<optgroup label="${KIND_LABELS[kind]}">${ctx.targets.filter((t) => t.kind === kind).map(option).join("")}</optgroup>`)
     .join("");
-  $("exclusions").innerHTML = `<h3>Exclude per country</h3>
+  $("exclusions").innerHTML = `<h3>Exclude per threat</h3>
     <p class="hint">Drop a threat's groups that target something you rule out, e.g. North Korea + Cryptocurrency.
     They move to “Excluded” at the bottom, with the reason.</p>
     <ul class="t2a-exclusions">${threats

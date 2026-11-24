@@ -105,5 +105,5 @@ tr.t2a-elsewhere td { opacity: 0.6; }
 .t2a-exclusions { list-style: none; padding: 0; margin: 0.4rem 0; display: flex; flex-direction: column; gap: 0.5rem; }
 .t2a-exclusions > li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; }
 .t2a-exclusions .chips { margin: 0; }
-.t2a-exclusions select { flex: 1; min-width: 0; max-width: 100%; }
+.t2a-exclusions select { flex: 1 1 12rem; min-width: 0; max-width: 100%; }
 .t2a-ransomware { border-color: var(--amber); color: var(--amber); }
