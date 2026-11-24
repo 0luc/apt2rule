@@ -9,8 +9,11 @@ export function newProfile(name: string): T2aProfile {
     schemaVersion: 1,
     name,
     countries: [],
+    area: [],
     targets: [],
     customTerms: [],
+    exclusions: {},
+    hideElsewhere: false,
     seenSince: null,
     hideUnknownSeen: false,
     tiers: [1, 2, 3],
@@ -56,12 +59,20 @@ export function parseProfile(text: string): T2aProfile {
   const tiers = Array.isArray(v.tiers) ? v.tiers.filter((t): t is Tier => t === 1 || t === 2 || t === 3) : [1, 2, 3];
   const picks: Record<string, boolean> = {};
   for (const [id, value] of Object.entries(v.picks ?? {})) if (typeof value === "boolean") picks[id] = value;
+  const exclusions: Record<string, string[]> = {};
+  for (const [country, ids] of Object.entries(v.exclusions ?? {})) if (strings(ids) && ids.length) exclusions[country] = ids;
+  // Profiles from before areas kept regions and countries among the targets: they become the area.
+  const isPlace = (id: string) => id.startsWith("region:") || id.startsWith("country:");
+  const targets = strings(v.targets) ? v.targets : [];
   return {
     schemaVersion: 1,
     name: v.name.trim() || "Imported profile",
     countries: strings(v.countries) ? v.countries : [],
-    targets: strings(v.targets) ? v.targets : [],
+    area: strings(v.area) ? v.area : targets.filter(isPlace),
+    targets: targets.filter((id) => !isPlace(id)),
     customTerms: strings(v.customTerms) ? v.customTerms : [],
+    exclusions,
+    hideElsewhere: v.hideElsewhere === true,
     seenSince: Number.isInteger(v.seenSince) ? v.seenSince! : null,
     hideUnknownSeen: v.hideUnknownSeen === true,
     tiers: [...new Set(tiers)].sort() as Tier[],

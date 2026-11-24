@@ -30,7 +30,7 @@
         <li>Runs in your browser</li>
       </ul>
       <p class="lede">
-        Tick the countries your threat assessment names and what your organisation is: its region, sector or country.
+        Tick the countries your threat assessment names, where your organisation is and what sector it is in.
         threat2apt searches every ATT&amp;CK group and campaign description and suggests the groups that match, with the
         sentences that prove it. <strong>You decide</strong>, then send your picks to apt2rule. Nothing you tick leaves your browser.
       </p>
@@ -63,12 +63,23 @@
           <input id="country-search" type="search" placeholder="Filter countries" autocomplete="off" aria-label="Filter countries" />
           <ul id="country-list" class="checklist t2a-list"></ul>
           <p class="hint">Only countries ATT&amp;CK groups are attributed to are listed. The number is how many groups.</p>
+          <div id="exclusions"></div>
+        </section>
+
+        <section class="panel" aria-labelledby="t2a-area-h">
+          <h2 id="t2a-area-h"><span class="step">02</span> Your area</h2>
+          <p class="hint">
+            Where your organisation is, e.g. Europe and your country. Groups whose descriptions name a place in your area are
+            ticked by default; groups that only name places elsewhere sink to the bottom. Groups naming no place stay in between.
+          </p>
+          <input id="area-search" type="search" placeholder="Filter regions, countries" autocomplete="off" aria-label="Filter regions and countries" />
+          <div id="area-list"></div>
         </section>
 
         <section class="panel" aria-labelledby="t2a-targets-h">
-          <h2 id="t2a-targets-h"><span class="step">02</span> Targets like you</h2>
-          <p class="hint">Your region, sector and country. A group matches when its or its campaigns' descriptions name one of the terms.</p>
-          <input id="target-search" type="search" placeholder="Filter regions, sectors, countries" autocomplete="off" aria-label="Filter targets" />
+          <h2 id="t2a-targets-h"><span class="step">03</span> Your sector</h2>
+          <p class="hint">What your organisation is. A group matches when its or its campaigns' descriptions name one of the terms.</p>
+          <input id="target-search" type="search" placeholder="Filter sectors" autocomplete="off" aria-label="Filter sectors" />
           <div id="target-list"></div>
           <label class="wide">Extra terms (comma or new line)
             <textarea id="custom-terms" rows="2" placeholder="e.g. port, satellite"></textarea>
@@ -77,13 +88,14 @@
         </section>
 
         <section class="panel" aria-labelledby="t2a-filters-h">
-          <h2 id="t2a-filters-h"><span class="step">03</span> Show</h2>
+          <h2 id="t2a-filters-h"><span class="step">04</span> Show</h2>
           <fieldset class="t2a-tiers">
             <legend class="hint">Tiers</legend>
-            <label class="check"><input type="checkbox" data-tier="1" /> Tier 1: country and target</label>
-            <label class="check"><input type="checkbox" data-tier="2" /> Tier 2: target only</label>
+            <label class="check"><input type="checkbox" data-tier="1" /> Tier 1: country and sector</label>
+            <label class="check"><input type="checkbox" data-tier="2" /> Tier 2: sector only</label>
             <label class="check"><input type="checkbox" data-tier="3" /> Tier 3: country only</label>
           </fieldset>
+          <label class="check"><input id="hide-elsewhere" type="checkbox" /> Hide groups that only target elsewhere</label>
           <div class="row">
             <label>Seen since (year) <input id="seen-since" type="number" min="2000" max="2100" step="1" placeholder="any" /></label>
             <label class="check"><input id="hide-unknown" type="checkbox" /> Also hide unknown</label>

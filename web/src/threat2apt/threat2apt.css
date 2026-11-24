@@ -97,3 +97,12 @@ mark { background: var(--accent-dim); color: var(--accent); border-radius: 3px; 
   border-top: 1px solid var(--border-strong);
   backdrop-filter: blur(6px);
 }
+
+/* your area and exclusions */
+.t2a-area { border-color: var(--accent); color: var(--accent); }
+tr.t2a-elsewhere td { opacity: 0.6; }
+.t2a-why { margin-top: 0.15rem; }
+.t2a-exclusions { list-style: none; padding: 0; margin: 0.4rem 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.t2a-exclusions > li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; }
+.t2a-exclusions .chips { margin: 0; }
+.t2a-exclusions select { flex: 1; min-width: 0; max-width: 100%; }

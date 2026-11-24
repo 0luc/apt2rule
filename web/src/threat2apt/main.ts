@@ -2,6 +2,7 @@ import { writeHandoff } from "../handoff";
 import {
   buildTable,
   countryCounts,
+  locationLabel,
   prepare,
   reasonFor,
   suggest,
@@ -14,6 +15,7 @@ import {
   type T2aGroup,
   type T2aProfile,
   type TargetGroup,
+  type TargetMatch,
   type Tier,
 } from "./engine";
 import { exportProfile, loadProfiles, newProfile, parseProfile, saveProfiles } from "./profiles";
@@ -32,6 +34,7 @@ const state = {
   profiles: {} as Record<string, T2aProfile>,
   current: "",
   countrySearch: "",
+  areaSearch: "",
   targetSearch: "",
   openTargetKinds: new Set<string>(["region", "sector"]),
   expanded: new Set<string>(),
@@ -75,6 +78,8 @@ function render() {
   if (document.activeElement !== nameInput) nameInput.value = p.name;
 
   renderCountries(ctx, p);
+  renderExclusions(ctx, p);
+  renderAreas(ctx, p);
   renderTargets(ctx, p);
   const custom = $<HTMLTextAreaElement>("custom-terms");
   if (document.activeElement !== custom) custom.value = p.customTerms.join(", ");
@@ -87,6 +92,9 @@ function render() {
   const hideUnknown = $<HTMLInputElement>("hide-unknown");
   hideUnknown.checked = p.hideUnknownSeen;
   hideUnknown.disabled = p.seenSince === null;
+  const hideElsewhere = $<HTMLInputElement>("hide-elsewhere");
+  hideElsewhere.checked = p.hideElsewhere;
+  hideElsewhere.disabled = !p.area.length;
 
   renderResults(ctx, p);
 }
@@ -114,10 +122,48 @@ function renderCountries(ctx: Context, p: T2aProfile) {
 
 const KIND_LABELS: Record<TargetGroup["kind"], string> = { region: "Regions", sector: "Sectors", country: "Countries" };
 
+/** Rules per ticked threat country: target groups that drop its groups. */
+function renderExclusions(ctx: Context, p: T2aProfile) {
+  if (!p.countries.length) {
+    $("exclusions").innerHTML = "";
+    return;
+  }
+  const option = (t: TargetGroup) => `<option value="${esc(t.id)}">${esc(t.label)}</option>`;
+  const optgroups = (["sector", "region", "country"] as const)
+    .map((kind) => `<optgroup label="${KIND_LABELS[kind]}">${ctx.targets.filter((t) => t.kind === kind).map(option).join("")}</optgroup>`)
+    .join("");
+  $("exclusions").innerHTML = `<h3>Exclude per country</h3>
+    <p class="hint">Drop a country's groups that target something you rule out, e.g. North Korea + Cryptocurrency.
+    They move to “Excluded” at the bottom, with the reason.</p>
+    <ul class="t2a-exclusions">${[...p.countries]
+      .sort((a, b) => (ctx.countryNames.get(a) ?? a).localeCompare(ctx.countryNames.get(b) ?? b))
+      .map((code) => {
+        const ids = p.exclusions[code] ?? [];
+        const chips = ids
+          .map(
+            (id) => `<li>${esc(ctx.targetsById.get(id)?.label ?? id)}
+              <button type="button" data-excl-remove="${code}" data-id="${esc(id)}" aria-label="Remove ${esc(ctx.targetsById.get(id)?.label ?? id)}">×</button></li>`,
+          )
+          .join("");
+        return `<li><strong>${esc(ctx.countryNames.get(code) ?? code)}</strong>
+          ${chips ? `<ul class="chips">${chips}</ul>` : ""}
+          <select data-excl-add="${code}" aria-label="Exclude ${esc(ctx.countryNames.get(code) ?? code)} groups that target"><option value="">+ exclude if it targets…</option>${optgroups}</select></li>`;
+      })
+      .join("")}</ul>`;
+}
+
+function renderAreas(ctx: Context, p: T2aProfile) {
+  $("area-list").innerHTML = targetList(ctx, ["region", "country"], new Set(p.area), state.areaSearch, "area");
+}
+
 function renderTargets(ctx: Context, p: T2aProfile) {
-  const ticked = new Set(p.targets);
-  const query = state.targetSearch.trim().toLowerCase();
-  $("target-list").innerHTML = (["region", "sector", "country"] as const)
+  $("target-list").innerHTML = targetList(ctx, ["sector"], new Set(p.targets), state.targetSearch, "target");
+}
+
+/** Checklists of target groups per kind; `attr` names the data attribute of the checkboxes. */
+function targetList(ctx: Context, kinds: TargetGroup["kind"][], ticked: Set<string>, search: string, attr: string): string {
+  const query = search.trim().toLowerCase();
+  return kinds
     .map((kind) => {
       const targets = ctx.targets
         .filter((t) => t.kind === kind)
@@ -130,13 +176,15 @@ function renderTargets(ctx: Context, p: T2aProfile) {
         <summary>${KIND_LABELS[kind]} <span class="hint">${targets.length}${nTicked ? `, ${nTicked} ticked` : ""}</span></summary>
         <ul class="checklist t2a-list">${targets
           .map(
-            (t) => `<li><label class="check"><input type="checkbox" data-target="${esc(t.id)}" ${ticked.has(t.id) ? "checked" : ""}>
+            (t) => `<li><label class="check"><input type="checkbox" data-${attr}="${esc(t.id)}" ${ticked.has(t.id) ? "checked" : ""}>
               ${esc(t.label)} <span class="hint">${state.targetCounts.get(t.id) ?? 0}</span></label>
-              <details class="terms"><summary>terms</summary>${esc(t.terms.join(", "))}</details></li>`,
+              <details class="terms"><summary>terms</summary>${esc(t.terms.join(", "))}${
+                t.countries?.length ? `<br>and the countries ${esc(t.countries.map((c) => ctx.countryNames.get(c) ?? c).join(", "))}` : ""
+              }</details></li>`,
           )
           .join("")}</ul></details>`;
     })
-    .join("") || `<p class="hint">No target matches “${esc(state.targetSearch)}”.</p>`;
+    .join("") || `<p class="hint">Nothing matches “${esc(search)}”.</p>`;
 }
 
 function renderResults(ctx: Context, p: T2aProfile) {
@@ -147,7 +195,8 @@ function renderResults(ctx: Context, p: T2aProfile) {
   $<HTMLButtonElement>("copy-md").disabled = picked.length === 0;
   $<HTMLButtonElement>("download-csv").disabled = picked.length === 0;
 
-  const byTier = (t: Tier) => all.filter((s) => s.tier === t);
+  const excluded = all.filter((s) => s.excludedBy.length);
+  const byTier = (t: Tier) => all.filter((s) => s.tier === t && !s.excludedBy.length);
   const stat = (n: number, label: string, kind: string) =>
     `<div class="stat ${kind}"><span class="stat-n">${n}</span><span class="stat-label">${label}</span></div>`;
   $("summary").innerHTML =
@@ -156,12 +205,14 @@ function renderResults(ctx: Context, p: T2aProfile) {
       .filter((t) => p.tiers.includes(t))
       .map((t) => stat(byTier(t).length, TIER_LABELS[t], `stat-tier${t}`))
       .join("") +
+    (excluded.length ? stat(excluded.length, "excluded", "stat-tier3") : "") +
     stat(picked.length, "ticked", "stat-enable");
 
   if (!p.countries.length && !p.targets.length && !p.customTerms.length) {
     $("results").innerHTML = `<section class="panel t2a-empty"><h3>Start on the left</h3>
-      <p>Tick the countries your threat assessment names (01), and the regions, sectors or countries your organisation belongs to (02).
-      Groups attributed to a ticked country <em>and</em> targeting something like you land in tier 1.</p></section>`;
+      <p>Tick the countries your threat assessment names (01), where your organisation is (02) and its sector (03).
+      Groups attributed to a ticked country <em>and</em> targeting your sector land in tier 1. Those that name a place in your
+      area are ticked.</p></section>`;
     return;
   }
   if (!p.tiers.length) {
@@ -182,16 +233,25 @@ function renderResults(ctx: Context, p: T2aProfile) {
             <button type="button" class="ghost" data-tick-tier="${tier}" data-value="0" ${nPicked === 0 ? "disabled" : ""}>Untick all</button>
           </div>` : ""}
         </div>
-        ${rows.length ? `<div class="table-wrap"><table>
-          <thead><tr><th><span class="sr-only">Pick</span></th><th>Group</th><th>Attributed to</th><th>Matched targets</th><th>Last seen</th></tr></thead>
-          <tbody>${rows.map((s) => renderRow(ctx, s)).join("")}</tbody></table></div>`
-          : `<p class="hint">No group in this tier.</p>`}
+        ${rows.length ? table(ctx, p, rows) : `<p class="hint">No group in this tier.</p>`}
       </section>`;
     })
-    .join("");
+    .join("") +
+    (excluded.length
+      ? `<section class="panel t2a-tier t2a-tier3" aria-labelledby="excluded-h">
+        <div class="t2a-tier-head"><h2 id="excluded-h"><span class="step">×</span> Excluded by your rules <span class="count">${excluded.length}</span></h2></div>
+        ${table(ctx, p, excluded)}</section>`
+      : "");
 }
 
-function renderRow(ctx: Context, s: Suggestion): string {
+function table(ctx: Context, p: T2aProfile, rows: Suggestion[]): string {
+  const area = p.area.length > 0;
+  return `<div class="table-wrap"><table>
+    <thead><tr><th><span class="sr-only">Pick</span></th><th>Group</th><th>Attributed to</th><th>Matched sectors</th>${area ? "<th>Location</th>" : ""}<th>Last seen</th></tr></thead>
+    <tbody>${rows.map((s) => renderRow(ctx, s, area)).join("")}</tbody></table></div>`;
+}
+
+function renderRow(ctx: Context, s: Suggestion, area: boolean): string {
   const g = s.group;
   const open = state.expanded.has(g.id);
   const ticked = new Set(s.countryMatches.map((a) => a.country));
@@ -203,15 +263,28 @@ function renderRow(ctx: Context, s: Suggestion): string {
   const targets = s.targetMatches.length
     ? s.targetMatches.map((m) => `<span class="t2a-tag" title="${esc(m.terms.join(", "))}">${esc(m.label)}</span>`).join(" ")
     : `<span class="hint">none</span>`;
-  const row = `<tr class="${s.picked ? "" : "excluded"}">
+  const location = !area
+    ? ""
+    : s.location === "area"
+      ? `<td>${s.locationMatches.map((m) => `<span class="t2a-tag t2a-area">${esc(m.label)}</span>`).join(" ")}</td>`
+      : s.location === "elsewhere"
+        ? `<td><span class="hint">elsewhere: ${esc(s.locationMatches.map((m) => m.label).join(", "))}</span></td>`
+        : `<td><span class="hint">unknown</span></td>`;
+  const why = s.excludedBy.length
+    ? `<div class="hint t2a-why">excluded: ${esc(
+        s.excludedBy.map((x) => `${ctx.countryNames.get(x.country) ?? x.country} → ${x.matches.map((m) => m.label).join(", ")}`).join("; "),
+      )}</div>`
+    : "";
+  const row = `<tr class="${s.picked ? "" : "excluded"} ${s.location === "elsewhere" ? "t2a-elsewhere" : ""}">
     <td><input type="checkbox" data-pick="${g.id}" ${s.picked ? "checked" : ""} aria-label="Pick ${esc(g.name)}"></td>
     <td><button type="button" class="t2a-expand" data-expand="${g.id}" aria-expanded="${open}">
         <span class="t2a-caret" aria-hidden="true">${open ? "▾" : "▸"}</span> <strong>${esc(g.name)}</strong></button>
-      <span class="hint">${g.id}${g.aliases.length ? ` · ${esc(g.aliases.slice(0, 3).join(", "))}` : ""}</span></td>
+      <span class="hint">${g.id}${g.aliases.length ? ` · ${esc(g.aliases.slice(0, 3).join(", "))}` : ""}</span>${why}</td>
     <td>${countries}</td>
     <td>${targets}</td>
+    ${location}
     <td class="mono">${g.lastSeen ?? `<span class="hint">unknown</span>`}</td></tr>`;
-  return open ? row + `<tr class="t2a-evidence"><td></td><td colspan="4">${renderEvidence(ctx, s)}</td></tr>` : row;
+  return open ? row + `<tr class="t2a-evidence"><td></td><td colspan="${area ? 5 : 4}">${renderEvidence(ctx, s)}</td></tr>` : row;
 }
 
 function renderEvidence(ctx: Context, s: Suggestion): string {
@@ -225,19 +298,29 @@ function renderEvidence(ctx: Context, s: Suggestion): string {
         )
         .join("")}</ul>`
     : `<p class="hint">No attribution phrase found in the ATT&amp;CK text.</p>`;
-  const targets = s.targetMatches.length
-    ? `<ul class="t2a-evidence-list">${s.targetMatches
-        .map((m) => {
-          const snippets = snippetsFor(g, m.hits);
-          const more = snippets.length > 3 ? ` <span class="hint">+${snippets.length - 3} more</span>` : "";
-          return `<li><strong>${esc(m.label)}</strong> <span class="hint">${esc(m.terms.join(", "))}</span>
-            <ul>${snippets.slice(0, 3).map((x) => `<li>${x}</li>`).join("")}</ul>${more}</li>`;
-        })
-        .join("")}</ul>`
-    : `<p class="hint">No ticked target found.</p>`;
+  const matchList = (matches: TargetMatch[]) =>
+    `<ul class="t2a-evidence-list">${matches
+      .map((m) => {
+        const snippets = snippetsFor(g, m.hits);
+        const more = snippets.length > 3 ? ` <span class="hint">+${snippets.length - 3} more</span>` : "";
+        return `<li><strong>${esc(m.label)}</strong> <span class="hint">${esc(m.terms.join(", "))}</span>
+          <ul>${snippets.slice(0, 3).map((x) => `<li>${x}</li>`).join("")}</ul>${more}</li>`;
+      })
+      .join("")}</ul>`;
+  const targets = s.targetMatches.length ? matchList(s.targetMatches) : `<p class="hint">No ticked sector found.</p>`;
+  const location = !s.location
+    ? ""
+    : `<div><h3>Location: ${esc(locationLabel(s).replace(/:.*/, ""))}</h3>${
+        s.locationMatches.length ? matchList(s.locationMatches) : `<p class="hint">The texts name no region or country (other than its own).</p>`
+      }</div>`;
+  const exclusion = s.excludedBy.length
+    ? `<div><h3>Excluded because</h3>${s.excludedBy
+        .map((x) => `<p class="hint">${esc(ctx.countryNames.get(x.country) ?? x.country)} rule:</p>${matchList(x.matches)}`)
+        .join("")}</div>`
+    : "";
   return `<div class="t2a-evidence-grid">
     <div><h3>Attribution</h3>${attribution}</div>
-    <div><h3>Targets</h3>${targets}</div></div>
+    <div><h3>Sectors</h3>${targets}</div>${location}${exclusion}</div>
     <p class="hint"><a href="https://attack.mitre.org/groups/${g.id}/" target="_blank" rel="noopener">${g.id} on attack.mitre.org</a></p>`;
 }
 
@@ -287,7 +370,7 @@ function toggle(list: string[], value: string, on: boolean): string[] {
 
 function setPick(s: Suggestion, on: boolean) {
   const picks = { ...profile().picks };
-  if (on === (s.tier === 1)) delete picks[s.group.id];
+  if (on === s.defaultPicked) delete picks[s.group.id];
   else picks[s.group.id] = on;
   profile().picks = picks;
 }
@@ -355,6 +438,34 @@ function bind() {
     profile().countries = toggle(profile().countries, box.dataset.country, box.checked);
     update();
   });
+  $("exclusions").addEventListener("change", (e) => {
+    const select = e.target as HTMLSelectElement;
+    const country = select.dataset.exclAdd;
+    if (!country || !select.value) return;
+    const p = profile();
+    p.exclusions = { ...p.exclusions, [country]: toggle(p.exclusions[country] ?? [], select.value, true) };
+    update();
+  });
+  $("exclusions").addEventListener("click", (e) => {
+    const button = (e.target as HTMLElement).closest<HTMLElement>("[data-excl-remove]");
+    if (!button) return;
+    const p = profile();
+    const country = button.dataset.exclRemove!;
+    const ids = (p.exclusions[country] ?? []).filter((id) => id !== button.dataset.id);
+    const { [country]: _, ...rest } = p.exclusions;
+    p.exclusions = ids.length ? { ...rest, [country]: ids } : rest;
+    update();
+  });
+  $("area-search").addEventListener("input", (e) => {
+    state.areaSearch = (e.target as HTMLInputElement).value;
+    renderAreas(state.ctx!, profile());
+  });
+  $("area-list").addEventListener("change", (e) => {
+    const box = e.target as HTMLInputElement;
+    if (!box.dataset.area) return;
+    profile().area = toggle(profile().area, box.dataset.area, box.checked);
+    update();
+  });
   $("target-search").addEventListener("input", (e) => {
     state.targetSearch = (e.target as HTMLInputElement).value;
     renderTargets(state.ctx!, profile());
@@ -365,17 +476,22 @@ function bind() {
     profile().targets = toggle(profile().targets, box.dataset.target, box.checked);
     update();
   });
-  $("target-list").addEventListener(
-    "toggle",
-    (e) => {
-      const details = e.target as HTMLDetailsElement;
-      const kind = details.dataset.kind;
-      if (kind === undefined || state.targetSearch.trim()) return;
-      if (details.open) state.openTargetKinds.add(kind);
-      else state.openTargetKinds.delete(kind);
-    },
-    true,
-  );
+  for (const [list, search] of [
+    ["target-list", () => state.targetSearch],
+    ["area-list", () => state.areaSearch],
+  ] as const) {
+    $(list).addEventListener(
+      "toggle",
+      (e) => {
+        const details = e.target as HTMLDetailsElement;
+        const kind = details.dataset.kind;
+        if (kind === undefined || search().trim()) return;
+        if (details.open) state.openTargetKinds.add(kind);
+        else state.openTargetKinds.delete(kind);
+      },
+      true,
+    );
+  }
   $("custom-terms").addEventListener("change", (e) => {
     const terms = (e.target as HTMLTextAreaElement).value.split(/[,\n]/).map((t) => t.trim()).filter(Boolean);
     profile().customTerms = [...new Set(terms)];
@@ -396,6 +512,10 @@ function bind() {
     const value = (e.target as HTMLInputElement).value.trim();
     const year = Number(value);
     profile().seenSince = value && Number.isInteger(year) ? year : null;
+    update();
+  });
+  $("hide-elsewhere").addEventListener("change", (e) => {
+    profile().hideElsewhere = (e.target as HTMLInputElement).checked;
     update();
   });
   $("hide-unknown").addEventListener("change", (e) => {
@@ -420,7 +540,7 @@ function bind() {
       return renderResults(state.ctx!, profile());
     }
     const tier = Number(target.dataset.tickTier);
-    for (const s of state.suggestions) if (s.tier === tier) setPick(s, target.dataset.value === "1");
+    for (const s of state.suggestions) if (s.tier === tier && !s.excludedBy.length) setPick(s, target.dataset.value === "1");
     update();
   });
 

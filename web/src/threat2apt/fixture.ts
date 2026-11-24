@@ -24,6 +24,7 @@ export function fixtureT2a(): T2aDataset {
       { code: "GN", name: "Guinea", terms: ["Guinea", "Guinean"] },
       { code: "PG", name: "Papua New Guinea", terms: ["Papua New Guinea"] },
       { code: "US", name: "United States", terms: ["United States", "US", "U.S."] },
+      { code: "KP", name: "North Korea", terms: ["North Korea", "North Korean", "DPRK"] },
     ],
     groups: [
       group("G0001", "Bear One", "Bear One is attributed to Russia. It targets European government ministries.", {
@@ -44,6 +45,9 @@ export function fixtureT2a(): T2aDataset {
       group("G0004", "Nobody", "Nobody targeted Western governments and non-governmental organizations.", { lastSeen: "2025-02-02" }),
       group("G0005", "Islander", "Islander targeted Papua New Guinea and us in German banks."),
       group("G0006", "Quiet", "Quiet is a criminal group."),
+      group("G0007", "Coin Thief", "Coin Thief is a North Korean group that steals cryptocurrency.", {
+        attribution: [{ country: "KP", evidence: "Coin Thief is a North Korean group that steals cryptocurrency.", source: "G0007" }],
+      }),
     ],
   };
 }

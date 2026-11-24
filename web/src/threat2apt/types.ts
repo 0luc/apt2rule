@@ -43,6 +43,8 @@ export interface TargetGroup {
   terms: string[];
   /** Set for country target groups: hits inside another country's name don't count. */
   country?: string;
+  /** Set for regions: codes of the countries whose terms also match it. */
+  countries?: string[];
 }
 
 export type Tier = 1 | 2 | 3;
@@ -53,17 +55,23 @@ export interface T2aProfile {
   name: string;
   /** Ticked country codes: groups attributed to one of them match on country. */
   countries: string[];
-  /** Ticked target group IDs, e.g. "region:west", "sector:government", "country:DE". */
+  /** Your area: ticked region and country target group IDs, e.g. "region:europe", "country:DE". */
+  area: string[];
+  /** Your sector: ticked sector target group IDs, e.g. "sector:government". */
   targets: string[];
-  /** Extra terms, matched like target group terms. */
+  /** Extra terms, matched like sector terms. */
   customTerms: string[];
+  /** Per threat country code: target group IDs that drop its groups, e.g. { KP: ["sector:crypto"] }. */
+  exclusions: Record<string, string[]>;
+  /** With an area: hide groups whose texts only name places outside it. */
+  hideElsewhere: boolean;
   /** Hide groups last seen before this year. */
   seenSince: number | null;
   /** With seenSince: also hide groups whose last seen is unknown. */
   hideUnknownSeen: boolean;
   /** Tiers shown in the results. */
   tiers: Tier[];
-  /** Ticks that differ from the default (tier 1 ticked, others not), by group ID. */
+  /** Ticks that differ from the default (see Suggestion.defaultPicked), by group ID. */
   picks: Record<string, boolean>;
 }
 
@@ -89,13 +97,32 @@ export interface TargetMatch {
   hits: Hit[];
 }
 
+/**
+ * Where a group operates, judged from the places its texts name (its own attributed countries aside):
+ * your area, only elsewhere, or no place at all. Null when no area is ticked.
+ */
+export type Location = "area" | "elsewhere" | "unknown";
+
+/** A threat country's exclusion rule that hit: the excluded target groups the group matched. */
+export interface Exclusion {
+  country: string;
+  matches: TargetMatch[];
+}
+
 export interface Suggestion {
   group: T2aGroup;
   tier: Tier;
   /** Attributions whose country is ticked. */
   countryMatches: Attribution[];
-  /** One entry per ticked target group (or custom term) that matched. */
+  /** One entry per ticked sector (or custom term) that matched. */
   targetMatches: TargetMatch[];
+  location: Location | null;
+  /** The places in your area it names; with "elsewhere", the places it names instead. */
+  locationMatches: TargetMatch[];
+  /** Empty unless an exclusion rule drops the group. */
+  excludedBy: Exclusion[];
+  /** Not excluded and, with an area, in it; without an area, tier 1. */
+  defaultPicked: boolean;
   picked: boolean;
 }
 
@@ -109,5 +136,7 @@ export interface GroupReason {
   tier: Tier;
   countries: { code: string; name: string; evidence: string; source: string }[];
   matched: { target: string; terms: string[] }[];
+  /** Absent in reasons from before areas, and when no area was ticked. */
+  location?: { status: Location; places: string[] };
   lastSeen: string | null;
 }

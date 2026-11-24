@@ -21,7 +21,7 @@ describe("tiers", () => {
 
   it("puts country + target in tier 1, target only in tier 2, country only in tier 3", () => {
     const profile = fixtureProfile({ countries: ["RU"], targets: ["region:west", "sector:government"] });
-    expect(ids(profile)).toEqual(["G0001:1", "G0004:2", "G0003:2", "G0002:3"]);
+    expect(ids(profile)).toEqual(["G0001:1", "G0004:2", "G0003:2", "G0005:2", "G0002:3"]);
   });
 
   it("hides tiers that are not ticked", () => {
@@ -35,16 +35,87 @@ describe("tiers", () => {
       ["G0001", false],
       ["G0004", false],
       ["G0003", false],
+      ["G0005", false],
       ["G0002", true],
     ]);
+  });
+});
+
+describe("your area", () => {
+  const base = { countries: ["RU", "CN"], targets: ["sector:government", "sector:energy"], tiers: [1, 2, 3] as const };
+  const rows = (extra: Partial<Parameters<typeof fixtureProfile>[0]> = {}) =>
+    suggest(ctx, fixtureProfile({ ...base, tiers: [1, 2, 3], ...extra })).map((s) => [s.group.id, s.location, s.picked]);
+
+  it("is off without an area: tier 1 is ticked", () => {
+    expect(rows()).toEqual([
+      ["G0001", null, true],
+      ["G0002", null, true],
+      ["G0004", null, false],
+      ["G0003", null, false],
+    ]);
+  });
+
+  it("ticks groups naming a place in your area, whatever their tier, and ranks elsewhere last", () => {
+    // G0001 names Europe; G0002 only Asia; G0004 "Western" (West); G0003 NATO and the U.S. in a campaign
+    expect(rows({ area: ["region:europe", "region:west"] })).toEqual([
+      ["G0001", "area", true],
+      ["G0002", "elsewhere", false],
+      ["G0004", "area", true],
+      ["G0003", "area", true],
+    ]);
+    expect(rows({ area: ["region:europe"] })).toEqual([
+      ["G0001", "area", true],
+      ["G0002", "elsewhere", false],
+      ["G0004", "elsewhere", false],
+      ["G0003", "elsewhere", false],
+    ]);
+  });
+
+  it("calls a group naming no place (other than its own country) unknown, and leaves it unticked", () => {
+    const [coin] = suggest(ctx, fixtureProfile({ countries: ["KP"], area: ["region:europe"] }));
+    expect(coin?.group.id).toBe("G0007");
+    expect(coin?.location).toBe("unknown");
+    expect(coin?.picked).toBe(false);
+  });
+
+  it("hides groups that only target elsewhere when asked", () => {
+    expect(rows({ area: ["region:europe"], hideElsewhere: true }).map((r) => r[0])).toEqual(["G0001"]);
+  });
+
+  it("names the places in the reason and the table", () => {
+    const profile = fixtureProfile({ ...base, tiers: [1, 2, 3], area: ["region:europe"] });
+    const [first, second] = suggest(ctx, profile);
+    expect(reasonFor(ctx, first!, profile, "2026-11-24").location).toEqual({ status: "area", places: ["Europe"] });
+    expect(buildTable(ctx, [second!]).csv.split("\n")[1]).toContain(",elsewhere: Asia-Pacific,");
+  });
+});
+
+describe("exclusions", () => {
+  const profile = (exclusions: Record<string, string[]>) => fixtureProfile({ countries: ["KP", "RU"], exclusions });
+
+  it("drops a threat country's groups that match an excluded target, unticked and with the reason", () => {
+    const coin = suggest(ctx, profile({ KP: ["sector:crypto"] })).find((s) => s.group.id === "G0007")!;
+    expect(coin.excludedBy.map((x) => [x.country, x.matches.map((m) => m.label)])).toEqual([["KP", ["Cryptocurrency"]]]);
+    expect(coin.picked).toBe(false);
+  });
+
+  it("only applies to the country the rule belongs to", () => {
+    const all = suggest(ctx, profile({ RU: ["sector:crypto"] }));
+    expect(all.every((s) => !s.excludedBy.length)).toBe(true);
+  });
+
+  it("keeps a group that doesn't match the excluded target", () => {
+    const all = suggest(ctx, profile({ RU: ["sector:finance"] }));
+    expect(all.filter((s) => s.excludedBy.length)).toEqual([]);
   });
 });
 
 describe("ordering within a tier", () => {
   it("ranks by number of target groups matched, then last seen (newest first, unknown last), then name", () => {
     const profile = fixtureProfile({ targets: ["region:west", "sector:government", "sector:defence", "sector:energy"] });
-    // G0003 matches West + Defence (2); G0004 West + Government (2, newer); G0001 West + Government (2, older); G0002 Energy (1)
-    expect(ids(profile)).toEqual(["G0004:2", "G0001:2", "G0003:2", "G0002:2"]);
+    // G0003 matches West + Defence (2); G0004 West + Government (2, newer); G0001 West + Government (2, older);
+    // G0002 Energy (1, named Bear Two); G0005 West through "German" (1, named Islander)
+    expect(ids(profile)).toEqual(["G0004:2", "G0001:2", "G0003:2", "G0002:2", "G0005:2"]);
   });
 });
 
@@ -75,6 +146,17 @@ describe("matching", () => {
     expect(m!.terms).toEqual(["governments"]);
   });
 
+  it("matches a region through the names of its countries", () => {
+    const [m] = matchGroup(ctx, groupById("G0005"), ["region:europe"], []);
+    expect(m!.terms).toEqual(["German"]);
+  });
+
+  it("doesn't count a group's own country towards a region of its location", () => {
+    // Coin Thief's only place is North Korea, its own country; Bear One names Europe ("European")
+    expect(ctx.places.get("G0007")).toEqual([]);
+    expect(ctx.places.get("G0001")!.map((m) => m.target)).toEqual(["region:west", "region:europe"]);
+  });
+
   it("matches custom terms as their own target", () => {
     const [m] = matchGroup(ctx, groupById("G0005"), [], ["german banks", " "]);
     expect(m!.label).toBe("“german banks”");
@@ -83,7 +165,7 @@ describe("matching", () => {
 
   it("counts the groups each target group matches", () => {
     const counts = targetCounts(ctx);
-    expect(counts.get("region:west")).toBe(3);
+    expect(counts.get("region:west")).toBe(4);
     expect(counts.get("country:GN")).toBeUndefined();
   });
 });
@@ -92,7 +174,7 @@ describe("last seen filter", () => {
   const base = { targets: ["region:west", "sector:government", "sector:energy"] };
 
   it("hides groups last seen before the year but keeps unknown ones", () => {
-    expect(ids(fixtureProfile({ ...base, seenSince: 2024 }))).toEqual(["G0004:2", "G0001:2", "G0002:2"]);
+    expect(ids(fixtureProfile({ ...base, seenSince: 2024 }))).toEqual(["G0004:2", "G0001:2", "G0002:2", "G0005:2"]);
   });
 
   it("hides unknown ones only when asked", () => {
@@ -123,18 +205,35 @@ describe("reasons and export", () => {
   it("writes a Markdown table and CSV", () => {
     const { markdown, csv } = buildTable(ctx, [first!]);
     expect(markdown.split("\n")[2]).toBe(
-      "| Bear One | G0001 | 1 | Russia | Bear One is attributed to Russia. (G0001) | West: European; Government: government, ministries | 2024-05-01 |",
+      "| Bear One | G0001 | 1 | Russia | Bear One is attributed to Russia. (G0001) | West: European; Government: government, ministries |  | 2024-05-01 |",
     );
     expect(csv.split("\n")[1]).toBe(
-      "Bear One,G0001,1,Russia,Bear One is attributed to Russia. (G0001),\"West: European; Government: government, ministries\",2024-05-01",
+      "Bear One,G0001,1,Russia,Bear One is attributed to Russia. (G0001),\"West: European; Government: government, ministries\",,2024-05-01",
     );
   });
 });
 
 describe("profiles", () => {
   it("round-trips through export and import", () => {
-    const p = { ...newProfile("Mine"), countries: ["RU"], targets: ["region:west"], customTerms: ["x"], seenSince: 2020, picks: { G0001: false } };
+    const p = {
+      ...newProfile("Mine"),
+      countries: ["RU"],
+      area: ["region:europe"],
+      targets: ["sector:government"],
+      customTerms: ["x"],
+      exclusions: { KP: ["sector:crypto"] },
+      hideElsewhere: true,
+      seenSince: 2020,
+      picks: { G0001: false },
+    };
     expect(parseProfile(exportProfile(p))).toEqual(p);
+  });
+
+  it("moves the regions and countries of a profile from before areas into its area", () => {
+    const old = { kind: "threat2apt", schemaVersion: 1, name: "Old", countries: ["RU"], targets: ["region:west", "sector:energy", "country:DE"] };
+    const p = parseProfile(JSON.stringify(old));
+    expect(p.area).toEqual(["region:west", "country:DE"]);
+    expect(p.targets).toEqual(["sector:energy"]);
   });
 
   it("rejects an apt2rule profile", () => {
