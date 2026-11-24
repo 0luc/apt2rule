@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="../src/style.css" />
     <link rel="stylesheet" href="../src/threat2apt/threat2apt.css" />
   </head>
-  <body class="t2a">
+  <body class="t2a has-bar">
     <header class="masthead">
       <div class="brand">
         <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
@@ -24,19 +24,13 @@
           <p class="tagline">Threat assessment → ATT&amp;CK groups → <a href="../">apt2rule</a></p>
         </div>
       </div>
-      <ul class="badges" aria-label="Properties">
-        <li>MITRE ATT&amp;CK®</li>
-        <li>Evidence for every pick</li>
-        <li>Runs in your browser</li>
-      </ul>
       <p class="lede">
-        Tick the threats your assessment names (countries, ransomware), where your organisation is and what sector it is in.
-        threat2apt searches every ATT&amp;CK group and campaign description and suggests the groups that match, with the
-        sentences that prove it. <strong>You decide</strong>, then send your picks to apt2rule. Nothing you tick leaves your browser.
+        Tick the threats your assessment names, where you are and your sector. threat2apt searches every ATT&amp;CK group and
+        campaign description and suggests the groups that match, with the sentences that prove it. <strong>You decide</strong>,
+        then send your picks to apt2rule. Everything runs in your browser.
       </p>
       <aside class="disclaimer" role="note">
-        <strong>Disclaimer.</strong> This product is fully vibe coded (built with AI assistance) and comes with no
-        guarantees. Attribution is read from ATT&amp;CK's description text and can be wrong or missing: check the evidence.
+        <strong>Vibe coded, no guarantees.</strong> Attribution is read from ATT&amp;CK's text and can be wrong: check the evidence.
       </aside>
     </header>
 
@@ -60,22 +54,18 @@
         <section class="panel" aria-labelledby="t2a-countries-h">
           <h2 id="t2a-countries-h"><span class="step">01</span> Threats</h2>
           <label class="check"><input id="ransomware" type="checkbox" /> Ransomware and extortion <span id="ransomware-count" class="hint"></span></label>
-          <p class="hint">
-            Groups whose descriptions name ransomware or extortion, whatever their country. Ransomware strikes anywhere, so
-            those naming no place at all are ticked too.
-          </p>
-          <p class="hint">The countries whose state actors your threat assessment names. Groups attributed to them match on country.</p>
+          <p class="hint">Groups that name ransomware or extortion, whatever their country. Those naming no place are ticked too.</p>
+          <p class="hint">And the countries whose state actors your assessment names:</p>
           <input id="country-search" type="search" placeholder="Filter countries" autocomplete="off" aria-label="Filter countries" />
           <ul id="country-list" class="checklist t2a-list"></ul>
-          <p class="hint">Only countries ATT&amp;CK groups are attributed to are listed. The number is how many groups.</p>
+          <p class="hint">The number is how many groups are attributed to it.</p>
           <div id="exclusions"></div>
         </section>
 
         <section class="panel" aria-labelledby="t2a-area-h">
           <h2 id="t2a-area-h"><span class="step">02</span> Your area</h2>
           <p class="hint">
-            Where your organisation is, e.g. Europe and your country. Groups whose descriptions name a place in your area are
-            ticked by default; groups that only name places elsewhere sink to the bottom. Groups naming no place stay in between.
+            Where you are, e.g. Europe. Groups that name a place in it are ticked; those naming only places elsewhere sink to the bottom.
           </p>
           <input id="area-search" type="search" placeholder="Filter regions, countries" autocomplete="off" aria-label="Filter regions and countries" />
           <div id="area-list"></div>
@@ -83,7 +73,7 @@
 
         <section class="panel" aria-labelledby="t2a-targets-h">
           <h2 id="t2a-targets-h"><span class="step">03</span> Your sector</h2>
-          <p class="hint">What your organisation is. A group matches when its or its campaigns' descriptions name one of the terms.</p>
+          <p class="hint">What your organisation is. A group matches when its texts name one of the terms.</p>
           <input id="target-search" type="search" placeholder="Filter sectors" autocomplete="off" aria-label="Filter sectors" />
           <div id="target-list"></div>
           <label class="wide">Extra terms (comma or new line)
@@ -105,7 +95,7 @@
             <label>Seen since (year) <input id="seen-since" type="number" min="2000" max="2100" step="1" placeholder="any" /></label>
             <label class="check"><input id="hide-unknown" type="checkbox" /> Also hide unknown</label>
           </div>
-          <p class="hint">Last seen comes from a group's campaigns. Most groups have none: their last seen is unknown and they stay visible unless you tick “also hide unknown”.</p>
+          <p class="hint">Last seen comes from a group's campaigns; most have none, so it is unknown.</p>
         </section>
       </aside>
 
@@ -116,7 +106,7 @@
       </main>
     </div>
 
-    <div class="t2a-bar" role="region" aria-label="Selection">
+    <div class="bar" role="region" aria-label="Selection">
       <span><strong id="picked-count" class="count">0</strong> group(s) ticked</span>
       <div class="actions">
         <button id="send" type="button">Send to apt2rule →</button>

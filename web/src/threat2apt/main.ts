@@ -255,7 +255,7 @@ function renderResults(ctx: Context, p: T2aProfile) {
 function table(ctx: Context, p: T2aProfile, rows: Suggestion[]): string {
   const area = p.area.length > 0;
   return `<div class="table-wrap"><table>
-    <thead><tr><th><span class="sr-only">Pick</span></th><th>Group</th><th>Attributed to</th><th>Matched sectors</th>${area ? "<th>Location</th>" : ""}<th>Last seen</th></tr></thead>
+    <thead><tr><th><span class="sr-only">Pick</span></th><th>Group</th><th>Attributed to</th><th>Matched sectors</th>${area ? "<th>Location</th>" : ""}</tr></thead>
     <tbody>${rows.map((s) => renderRow(ctx, s, area)).join("")}</tbody></table></div>`;
 }
 
@@ -289,12 +289,13 @@ function renderRow(ctx: Context, s: Suggestion, area: boolean): string {
     <td><input type="checkbox" data-pick="${g.id}" ${s.picked ? "checked" : ""} aria-label="Pick ${esc(g.name)}"></td>
     <td><button type="button" class="t2a-expand" data-expand="${g.id}" aria-expanded="${open}">
         <span class="t2a-caret" aria-hidden="true">${open ? "▾" : "▸"}</span> <strong>${esc(g.name)}</strong></button>
-      <span class="hint">${g.id}${g.aliases.length ? ` · ${esc(g.aliases.slice(0, 3).join(", "))}` : ""}</span>${why}</td>
+      <span class="hint">${g.id}${g.aliases.length ? ` · ${esc(g.aliases.slice(0, 3).join(", "))}` : ""}${
+        g.lastSeen ? ` · last seen <span class="mono">${g.lastSeen.slice(0, 7)}</span>` : ""
+      }</span>${why}</td>
     <td>${countries}</td>
     <td>${targets}</td>
-    ${location}
-    <td class="mono">${g.lastSeen ?? `<span class="hint">unknown</span>`}</td></tr>`;
-  return open ? row + `<tr class="t2a-evidence"><td></td><td colspan="${area ? 5 : 4}">${renderEvidence(ctx, s)}</td></tr>` : row;
+    ${location}</tr>`;
+  return open ? row + `<tr class="t2a-evidence"><td></td><td colspan="${area ? 4 : 3}">${renderEvidence(ctx, s)}</td></tr>` : row;
 }
 
 function renderEvidence(ctx: Context, s: Suggestion): string {

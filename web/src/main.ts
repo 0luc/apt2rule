@@ -161,6 +161,9 @@ function render() {
           Raise “used by at least” in step 03 to keep what your groups share, or narrow with tags in step 04.</p>`
       : "");
   $("tag-selected").textContent = result.tag;
+  $("bar-count").textContent = String(result.selected.length);
+  $("bar-share").textContent = total ? `${share}% of the ruleset · ${result.tag}` : "";
+  $<HTMLButtonElement>("bar-copy").disabled = !result.selected.length;
   const ignoreInput = $<HTMLInputElement>("ignore-tags");
   if (document.activeElement !== ignoreInput) ignoreInput.value = p.ignoreTags.join(", ");
   $("snippet").textContent = result.snippets[state.snippetMode];
@@ -464,6 +467,9 @@ function bind() {
   const base = () => `apt2rule-${slug(profile().name)}-${today()}`;
   const snippet = () => state.result!.snippets[state.snippetMode];
   $("copy-snippet").addEventListener("click", (e) => copy(snippet(), e.target as HTMLButtonElement));
+  $("bar-copy").addEventListener("click", (e) => copy(state.result!.snippets.dryRun, e.target as HTMLButtonElement));
+  // the bar repeats the output, so it steps aside while the output itself is on screen
+  new IntersectionObserver(([entry]) => ($("bar").hidden = entry!.isIntersecting)).observe(document.querySelector(".output")!);
   $("copy-fleet").addEventListener("click", (e) => copy($("fleet-request").textContent ?? "", e.target as HTMLButtonElement));
   $("copy-ids").addEventListener("click", (e) => copy(state.result!.ruleIdList, e.target as HTMLButtonElement));
   $("download-snippet").addEventListener("click", () =>

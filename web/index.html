@@ -9,7 +9,7 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%233dd6c4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 2.5 30 27.5H2z' fill='%23111b24' stroke-width='1.8'/%3E%3Cpath d='M9.5 18Q16 12.5 22.5 18 16 23.5 9.5 18z' stroke-width='1.4'/%3E%3Ccircle cx='16' cy='18' r='4.7' fill='%23070b10' stroke-width='1.8'/%3E%3Ccircle cx='16' cy='18' r='1.9' fill='%233dd6c4' stroke='none'/%3E%3Cpath d='M19.4 21.4 26 28' stroke-width='2.8'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="./src/style.css" />
   </head>
-  <body>
+  <body class="has-bar">
     <header class="masthead">
       <div class="brand">
         <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
@@ -24,19 +24,12 @@
           <p class="tagline">Threat profile → Elastic detection coverage</p>
         </div>
       </div>
-      <ul class="badges" aria-label="Properties">
-        <li>MITRE ATT&amp;CK®</li>
-        <li>Elastic Security</li>
-        <li>Runs in your browser</li>
-      </ul>
       <p class="lede">
-        Select the APT groups from your threat analysis. apt2rule maps the ATT&amp;CK techniques they use to Elastic
-        prebuilt detection rules and gives you a Kibana Dev Tools snippet that <strong>only adds tags</strong>. Filter by
-        tag in Kibana to bulk-enable. Nothing you select leaves your browser.
+        Pick the APT groups from your threat analysis. apt2rule finds the Elastic prebuilt rules for the ATT&amp;CK techniques
+        they use and gives you a Kibana Dev Tools snippet that <strong>only adds a tag</strong>. Everything runs in your browser.
       </p>
       <aside class="disclaimer" role="note">
-        <strong>Disclaimer.</strong> This product is fully vibe coded (built with AI assistance) and comes with no
-        guarantees. Always run the dry run and review the rules before enabling or disabling anything in your cluster.
+        <strong>Vibe coded, no guarantees.</strong> Always run the dry run and review the rules before enabling anything.
       </aside>
     </header>
 
@@ -53,15 +46,14 @@
             <button id="profile-delete" type="button" class="danger">Delete</button>
           </div>
         </div>
-        <p class="hint">Profiles are saved in this browser only. Export them to back them up or share them.</p>
+        <p class="hint">Saved in this browser only. Export to back up or share.</p>
         <div class="row">
           <label>Elastic prebuilt ruleset <select id="ruleset"></select></label>
           <span id="ruleset-info" class="mono hint"></span>
         </div>
         <p class="hint">
-          Only the newest ruleset per Kibana version is listed. On an older patch, e.g. <code>9.4.15</code>? Pick the one for
-          the same Kibana version (<code>9.4.x</code>). Rules added since then aren't in your Kibana, so the dry run may
-          match a few fewer rules than the snippet's comments expect.
+          The newest ruleset per Kibana version. On an older patch (e.g. <code>9.4.15</code>), pick your Kibana version
+          (<code>9.4.x</code>): the dry run may then match a few rules fewer than expected.
         </p>
         <details class="help">
           <summary>Which ruleset version is installed in my Kibana?</summary>
@@ -86,7 +78,7 @@
       <section class="panel" aria-labelledby="groups-h">
         <h2 id="groups-h"><span class="step">02</span> APT groups</h2>
         <div id="handoff" class="handoff" role="status" hidden></div>
-        <p class="hint">Not sure which groups? <a href="threat2apt/">threat2apt</a> suggests them from the countries and targets in your threat assessment, with the evidence.</p>
+        <p class="hint">Not sure which groups? <a href="threat2apt/">threat2apt</a> suggests them from your threat assessment, with the evidence.</p>
         <div class="split">
           <div>
             <label>Search name or alias <input id="group-search" type="search" placeholder="e.g. Cozy Bear, APT28, Lazarus" autocomplete="off" /></label>
@@ -121,9 +113,8 @@
           <label class="check"><input id="include-ml" type="checkbox" /> Include machine learning rules (need their ML job)</label>
         </div>
         <p class="hint">
-          The same tags you see in Kibana's rules table. Within a category a rule needs any ticked tag; across categories it
-          needs all of them. E.g. <em>Data Source: Elastic Defend</em> + <em>OS: Linux</em> + <em>OS: Windows</em> keeps Elastic
-          Defend rules for Linux or Windows. Nothing ticked means no filter.
+          Kibana's rule tags. A rule needs one ticked tag in every category you tick in, e.g. <em>Data Source: Elastic Defend</em>
+          + <em>OS: Linux</em>. Nothing ticked: no filter.
         </p>
         <div class="row">
           <label class="wide">Search tags <input id="tag-search" type="search" placeholder="e.g. Defend, Linux, AWS" autocomplete="off" /></label>
@@ -136,15 +127,14 @@
           </label>
         </div>
         <p class="hint">
-          Comma-separated. End a tag with <code>*</code> to match everything that starts with it, e.g. <code>disabled-*</code>.
-          apt2rule can't see your cluster, so Kibana skips these rules when you run the snippet; the dry run shows the real count.
+          Comma-separated; a trailing <code>*</code> matches a prefix. Kibana skips these rules, so the dry run shows the real count.
         </p>
         <div class="row">
           <label class="check"><input id="skip-disabled-run" type="checkbox" /> Skip rules that were disabled after running</label>
         </div>
         <p class="hint">
-          A rule that is disabled but has a last run was switched off on purpose, e.g. because it was noisy. Unlike a tag, its
-          disabled state survives Elastic rule updates. Rules that never ran (freshly installed) and enabled rules are still tagged.
+          A disabled rule that has run before was switched off on purpose, e.g. as noisy. Unlike a tag, that survives Elastic
+          rule updates.
         </p>
         <div id="tag-categories"></div>
       </section>
@@ -188,6 +178,14 @@
         </div>
       </section>
     </main>
+
+    <div id="bar" class="bar" role="region" aria-label="Result">
+      <span><strong id="bar-count" class="count">0</strong> rules to tag <span id="bar-share" class="hint"></span></span>
+      <div class="actions">
+        <button id="bar-copy" type="button">Copy dry run</button>
+        <a class="button ghost" href="#output-h">Output ↓</a>
+      </div>
+    </div>
 
     <footer>
       <p class="disclaimer-footer">

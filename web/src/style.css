@@ -37,6 +37,7 @@ body {
   background-attachment: fixed;
 }
 
+[hidden] { display: none !important; }
 a { color: var(--accent); text-underline-offset: 2px; }
 code, .mono { font-family: var(--mono); font-size: 0.85em; }
 code { color: var(--accent); background: var(--accent-dim); padding: 0.05rem 0.35rem; border-radius: 4px; }
@@ -57,28 +58,13 @@ h1::after { content: "_"; color: var(--accent); animation: blink 1.2s steps(1) i
 @keyframes blink { 50% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { h1::after { animation: none; } }
 .tagline { margin: 0; color: var(--muted); font-family: var(--mono); font-size: 0.85rem; }
-.badges { list-style: none; display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0; margin: 1rem 0 0.75rem; }
-.badges li {
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--accent);
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  padding: 0.15rem 0.65rem;
-  background: var(--panel);
-}
-.lede { max-width: 52rem; color: var(--muted); margin: 0.5rem 0 1rem; }
+.lede { max-width: 52rem; color: var(--muted); margin: 0.9rem 0 0.6rem; }
 .lede strong { color: var(--text); }
 .disclaimer {
-  border: 1px solid rgba(242, 184, 75, 0.35);
   border-left: 3px solid var(--amber);
-  background: var(--amber-dim);
-  color: var(--text);
-  border-radius: 6px;
-  padding: 0.6rem 0.9rem;
-  font-size: 0.9rem;
+  color: var(--muted);
+  padding: 0.1rem 0.75rem;
+  font-size: 0.83rem;
   max-width: 52rem;
 }
 .disclaimer strong { color: var(--amber); }
@@ -104,11 +90,10 @@ h2 {
 .step {
   font-family: var(--mono);
   font-size: 0.8rem;
-  color: var(--accent);
-  border: 1px solid var(--accent);
+  color: var(--muted);
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
   padding: 0.05rem 0.4rem;
-  background: var(--accent-dim);
 }
 h3 { font-size: 0.9rem; margin: 1.1rem 0 0.5rem; color: var(--muted); font-weight: 600; }
 .count { font-family: var(--mono); color: var(--accent); }
@@ -142,8 +127,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 }
 input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 
-button, label.button {
+button, label.button, a.button {
   font: inherit;
+  display: inline-block;
+  text-decoration: none;
   font-size: 0.86rem;
   font-weight: 600;
   padding: 0.42rem 0.9rem;
@@ -155,9 +142,13 @@ button, label.button {
   flex-direction: row;
   transition: background 0.15s, color 0.15s, box-shadow 0.15s;
 }
-button:hover:not(:disabled), label.button:hover { box-shadow: 0 0 0 3px var(--accent-dim); }
+button:hover:not(:disabled), label.button:hover, a.button:hover { box-shadow: 0 0 0 3px var(--accent-dim); }
 button:disabled { opacity: 0.5; cursor: default; }
-button.ghost, label.button.ghost, .results button, .chips button { background: transparent; color: var(--accent); }
+/* Teal is for the one primary action of a panel; everything else stays quiet until hovered. */
+button.ghost, label.button.ghost, a.button.ghost, .results button { background: transparent; color: var(--text); border-color: var(--border-strong); }
+button.ghost:hover:not(:disabled), label.button.ghost:hover, a.button.ghost:hover, .results button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.chips button { background: transparent; color: var(--muted); }
+.chips button:hover { color: var(--danger); box-shadow: none; }
 button.danger { background: transparent; color: var(--danger); border-color: rgba(255, 122, 122, 0.5); }
 button.danger:hover { box-shadow: 0 0 0 3px var(--danger-dim); }
 
@@ -174,7 +165,7 @@ button.danger:hover { box-shadow: 0 0 0 3px var(--danger-dim); }
 .results li { padding: 0.6rem 0.2rem; border-bottom: 1px solid var(--border); display: flex; gap: 0.75rem; align-items: flex-start; }
 .results .meta { flex: 1; min-width: 0; }
 .results strong { font-family: var(--mono); }
-.results .aliases { color: var(--accent); opacity: 0.8; font-size: 0.8rem; }
+.results .aliases { color: var(--text); opacity: 0.75; font-size: 0.8rem; }
 .results .desc { color: var(--muted); font-size: 0.83rem; }
 
 .chips { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.4rem 0; }
@@ -288,3 +279,23 @@ tr.excluded td { color: var(--muted); opacity: 0.7; }
 footer { color: var(--muted); font-size: 0.8rem; margin-top: 2.5rem; border-top: 1px solid var(--border); padding-top: 1rem; }
 footer p { margin: 0.4rem 0; }
 .disclaimer-footer { color: var(--amber); }
+
+/* ---------- bottom bar: the result stays in reach while you scroll ---------- */
+.bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 1.25rem;
+  padding: 0.7rem 1rem;
+  background: rgba(12, 19, 26, 0.94);
+  border-top: 1px solid var(--border-strong);
+  backdrop-filter: blur(6px);
+}
+.bar .hint { margin: 0; }
+body.has-bar { padding-bottom: 6rem; }
