@@ -9,8 +9,9 @@
 - **Area**: the regions and countries ticked as where the organisation is.
 - **Location**: where a group operates, judged from the places its texts name (its own countries aside): *your area*, *elsewhere* or *unknown*.
 - **Target match**: a term from a ticked sector or a custom term found in a group's or its campaigns' descriptions.
-- **Exclusion**: a rule on a threat country that drops its groups matching a target group, for example North Korea + Cryptocurrency.
-- **Tier**: threat2apt's ranking bucket. Tier 1: ticked country and sector match. Tier 2: sector match only. Tier 3: ticked country only.
+- **Threat**: what the assessment says attacks you: a ticked country, or *ransomware and extortion* (groups whose texts name ransomware or extortion, whatever their country).
+- **Exclusion**: a rule on a threat that drops its groups matching a target group, for example North Korea + Cryptocurrency.
+- **Tier**: threat2apt's ranking bucket. Tier 1: threat and sector match. Tier 2: sector match only. Tier 3: threat only.
 - **Last seen**: the latest `last_seen` across a group's campaigns; *unknown* without campaigns.
 - **Reason**: the tier, attribution, matched terms, location and last seen stored with a group when threat2apt sends it to apt2rule; *manual* for groups added by hand.
 - **Profile**: the saved settings of one page (apt2rule or threat2apt), kept in the browser and exportable as JSON. The two pages keep separate profiles.

@@ -30,7 +30,7 @@
         <li>Runs in your browser</li>
       </ul>
       <p class="lede">
-        Tick the countries your threat assessment names, where your organisation is and what sector it is in.
+        Tick the threats your assessment names (countries, ransomware), where your organisation is and what sector it is in.
         threat2apt searches every ATT&amp;CK group and campaign description and suggests the groups that match, with the
         sentences that prove it. <strong>You decide</strong>, then send your picks to apt2rule. Nothing you tick leaves your browser.
       </p>
@@ -58,7 +58,12 @@
         </section>
 
         <section class="panel" aria-labelledby="t2a-countries-h">
-          <h2 id="t2a-countries-h"><span class="step">01</span> Threat countries</h2>
+          <h2 id="t2a-countries-h"><span class="step">01</span> Threats</h2>
+          <label class="check"><input id="ransomware" type="checkbox" /> Ransomware and extortion <span id="ransomware-count" class="hint"></span></label>
+          <p class="hint">
+            Groups whose descriptions name ransomware or extortion, whatever their country. Ransomware strikes anywhere, so
+            those naming no place at all are ticked too.
+          </p>
           <p class="hint">The countries whose state actors your threat assessment names. Groups attributed to them match on country.</p>
           <input id="country-search" type="search" placeholder="Filter countries" autocomplete="off" aria-label="Filter countries" />
           <ul id="country-list" class="checklist t2a-list"></ul>
@@ -91,9 +96,9 @@
           <h2 id="t2a-filters-h"><span class="step">04</span> Show</h2>
           <fieldset class="t2a-tiers">
             <legend class="hint">Tiers</legend>
-            <label class="check"><input type="checkbox" data-tier="1" /> Tier 1: country and sector</label>
+            <label class="check"><input type="checkbox" data-tier="1" /> Tier 1: threat and sector</label>
             <label class="check"><input type="checkbox" data-tier="2" /> Tier 2: sector only</label>
-            <label class="check"><input type="checkbox" data-tier="3" /> Tier 3: country only</label>
+            <label class="check"><input type="checkbox" data-tier="3" /> Tier 3: threat only</label>
           </fieldset>
           <label class="check"><input id="hide-elsewhere" type="checkbox" /> Hide groups that only target elsewhere</label>
           <div class="row">

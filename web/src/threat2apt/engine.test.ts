@@ -90,6 +90,43 @@ describe("your area", () => {
   });
 });
 
+describe("tier 2 with an area", () => {
+  const profile = (countries: string[]) => fixtureProfile({ countries, targets: ["sector:energy"], area: ["region:asia-pacific"] });
+
+  it("doesn't tick a group attributed only to countries you didn't tick, even in your area", () => {
+    const [bear] = suggest(ctx, profile([]));
+    expect([bear?.group.id, bear?.tier, bear?.location, bear?.picked]).toEqual(["G0002", 2, "area", false]);
+  });
+
+  it("ticks it once its country is a threat", () => {
+    const [bear] = suggest(ctx, profile(["RU"]));
+    expect([bear?.tier, bear?.picked]).toEqual([1, true]);
+  });
+});
+
+describe("ransomware", () => {
+  it("counts ransomware groups as a threat, with the terms as evidence", () => {
+    const [locker] = suggest(ctx, fixtureProfile({ ransomware: true }));
+    expect([locker?.group.id, locker?.tier, locker?.ransomwareMatch?.terms]).toEqual(["G0008", 3, ["ransomware", "extortion"]]);
+  });
+
+  it("ticks ransomware groups that name no place: ransomware strikes anywhere", () => {
+    const [locker] = suggest(ctx, fixtureProfile({ ransomware: true, area: ["region:europe"] }));
+    expect([locker?.location, locker?.picked]).toEqual(["unknown", true]);
+  });
+
+  it("carries its own exclusions, like a country", () => {
+    const [locker] = suggest(ctx, fixtureProfile({ ransomware: true, exclusions: { ransomware: ["threat:ransomware"] } }));
+    expect([locker?.excludedBy.map((x) => x.country), locker?.picked]).toEqual([["ransomware"], false]);
+    const [kept] = suggest(ctx, fixtureProfile({ ransomware: true, exclusions: { ransomware: ["sector:finance"] } }));
+    expect(kept?.excludedBy).toEqual([]);
+  });
+
+  it("is off unless ticked", () => {
+    expect(suggest(ctx, fixtureProfile()).map((s) => s.group.id)).toEqual([]);
+  });
+});
+
 describe("exclusions", () => {
   const profile = (exclusions: Record<string, string[]>) => fixtureProfile({ countries: ["KP", "RU"], exclusions });
 
@@ -205,10 +242,10 @@ describe("reasons and export", () => {
   it("writes a Markdown table and CSV", () => {
     const { markdown, csv } = buildTable(ctx, [first!]);
     expect(markdown.split("\n")[2]).toBe(
-      "| Bear One | G0001 | 1 | Russia | Bear One is attributed to Russia. (G0001) | West: European; Government: government, ministries |  | 2024-05-01 |",
+      "| Bear One | G0001 | 1 | Russia | Bear One is attributed to Russia. (G0001) |  | West: European; Government: government, ministries |  | 2024-05-01 |",
     );
     expect(csv.split("\n")[1]).toBe(
-      "Bear One,G0001,1,Russia,Bear One is attributed to Russia. (G0001),\"West: European; Government: government, ministries\",,2024-05-01",
+      "Bear One,G0001,1,Russia,Bear One is attributed to Russia. (G0001),,\"West: European; Government: government, ministries\",,2024-05-01",
     );
   });
 });

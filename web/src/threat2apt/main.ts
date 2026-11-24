@@ -2,6 +2,7 @@ import { writeHandoff } from "../handoff";
 import {
   buildTable,
   countryCounts,
+  RANSOMWARE,
   locationLabel,
   prepare,
   reasonFor,
@@ -77,6 +78,8 @@ function render() {
   const nameInput = $<HTMLInputElement>("profile-name");
   if (document.activeElement !== nameInput) nameInput.value = p.name;
 
+  $<HTMLInputElement>("ransomware").checked = p.ransomware;
+  $("ransomware-count").textContent = String(state.targetCounts.get(RANSOMWARE) ?? 0);
   renderCountries(ctx, p);
   renderExclusions(ctx, p);
   renderAreas(ctx, p);
@@ -120,23 +123,24 @@ function renderCountries(ctx: Context, p: T2aProfile) {
       .join("") || `<li class="hint">No country matches “${esc(state.countrySearch)}”.</li>`;
 }
 
-const KIND_LABELS: Record<TargetGroup["kind"], string> = { region: "Regions", sector: "Sectors", country: "Countries" };
+const KIND_LABELS: Record<TargetGroup["kind"], string> = { region: "Regions", sector: "Sectors", country: "Countries", threat: "Motive" };
 
-/** Rules per ticked threat country: target groups that drop its groups. */
+/** Rules per threat (ticked country, ransomware): target groups that drop its groups. */
 function renderExclusions(ctx: Context, p: T2aProfile) {
-  if (!p.countries.length) {
+  const threats = [...p.countries].sort((a, b) => threatName(ctx, a).localeCompare(threatName(ctx, b)));
+  if (p.ransomware) threats.unshift("ransomware");
+  if (!threats.length) {
     $("exclusions").innerHTML = "";
     return;
   }
   const option = (t: TargetGroup) => `<option value="${esc(t.id)}">${esc(t.label)}</option>`;
-  const optgroups = (["sector", "region", "country"] as const)
+  const optgroups = (["threat", "sector", "region", "country"] as const)
     .map((kind) => `<optgroup label="${KIND_LABELS[kind]}">${ctx.targets.filter((t) => t.kind === kind).map(option).join("")}</optgroup>`)
     .join("");
   $("exclusions").innerHTML = `<h3>Exclude per country</h3>
-    <p class="hint">Drop a country's groups that target something you rule out, e.g. North Korea + Cryptocurrency.
+    <p class="hint">Drop a threat's groups that target something you rule out, e.g. North Korea + Cryptocurrency.
     They move to “Excluded” at the bottom, with the reason.</p>
-    <ul class="t2a-exclusions">${[...p.countries]
-      .sort((a, b) => (ctx.countryNames.get(a) ?? a).localeCompare(ctx.countryNames.get(b) ?? b))
+    <ul class="t2a-exclusions">${threats
       .map((code) => {
         const ids = p.exclusions[code] ?? [];
         const chips = ids
@@ -145,11 +149,16 @@ function renderExclusions(ctx: Context, p: T2aProfile) {
               <button type="button" data-excl-remove="${code}" data-id="${esc(id)}" aria-label="Remove ${esc(ctx.targetsById.get(id)?.label ?? id)}">×</button></li>`,
           )
           .join("");
-        return `<li><strong>${esc(ctx.countryNames.get(code) ?? code)}</strong>
+        return `<li><strong>${esc(threatName(ctx, code))}</strong>
           ${chips ? `<ul class="chips">${chips}</ul>` : ""}
-          <select data-excl-add="${code}" aria-label="Exclude ${esc(ctx.countryNames.get(code) ?? code)} groups that target"><option value="">+ exclude if it targets…</option>${optgroups}</select></li>`;
+          <select data-excl-add="${code}" aria-label="Exclude ${esc(threatName(ctx, code))} groups that match"><option value="">+ exclude if it matches…</option>${optgroups}</select></li>`;
       })
       .join("")}</ul>`;
+}
+
+/** A threat's name: a country, or Ransomware. */
+function threatName(ctx: Context, code: string): string {
+  return code === "ransomware" ? "Ransomware" : (ctx.countryNames.get(code) ?? code);
 }
 
 function renderAreas(ctx: Context, p: T2aProfile) {
@@ -208,11 +217,10 @@ function renderResults(ctx: Context, p: T2aProfile) {
     (excluded.length ? stat(excluded.length, "excluded", "stat-tier3") : "") +
     stat(picked.length, "ticked", "stat-enable");
 
-  if (!p.countries.length && !p.targets.length && !p.customTerms.length) {
+  if (!p.countries.length && !p.ransomware && !p.targets.length && !p.customTerms.length) {
     $("results").innerHTML = `<section class="panel t2a-empty"><h3>Start on the left</h3>
-      <p>Tick the countries your threat assessment names (01), where your organisation is (02) and its sector (03).
-      Groups attributed to a ticked country <em>and</em> targeting your sector land in tier 1. Those that name a place in your
-      area are ticked.</p></section>`;
+      <p>Tick the threats your assessment names (01: countries, ransomware), where your organisation is (02) and its sector (03).
+      Groups matching a threat <em>and</em> your sector land in tier 1. Those that name a place in your area are ticked.</p></section>`;
     return;
   }
   if (!p.tiers.length) {
@@ -255,11 +263,13 @@ function renderRow(ctx: Context, s: Suggestion, area: boolean): string {
   const g = s.group;
   const open = state.expanded.has(g.id);
   const ticked = new Set(s.countryMatches.map((a) => a.country));
-  const countries = g.attribution.length
-    ? g.attribution
-        .map((a) => `<span class="${ticked.has(a.country) ? "t2a-hit" : ""}">${esc(ctx.countryNames.get(a.country) ?? a.country)}</span>`)
-        .join(", ")
-    : `<span class="hint">unknown</span>`;
+  const countries =
+    (g.attribution.length
+      ? g.attribution
+          .map((a) => `<span class="${ticked.has(a.country) ? "t2a-hit" : ""}">${esc(ctx.countryNames.get(a.country) ?? a.country)}</span>`)
+          .join(", ")
+      : `<span class="hint">unknown</span>`) +
+    (s.ransomwareMatch ? ` <span class="t2a-tag t2a-ransomware" title="${esc(s.ransomwareMatch.terms.join(", "))}">ransomware</span>` : "");
   const targets = s.targetMatches.length
     ? s.targetMatches.map((m) => `<span class="t2a-tag" title="${esc(m.terms.join(", "))}">${esc(m.label)}</span>`).join(" ")
     : `<span class="hint">none</span>`;
@@ -272,7 +282,7 @@ function renderRow(ctx: Context, s: Suggestion, area: boolean): string {
         : `<td><span class="hint">unknown</span></td>`;
   const why = s.excludedBy.length
     ? `<div class="hint t2a-why">excluded: ${esc(
-        s.excludedBy.map((x) => `${ctx.countryNames.get(x.country) ?? x.country} → ${x.matches.map((m) => m.label).join(", ")}`).join("; "),
+        s.excludedBy.map((x) => `${threatName(ctx, x.country)} → ${x.matches.map((m) => m.label).join(", ")}`).join("; "),
       )}</div>`
     : "";
   const row = `<tr class="${s.picked ? "" : "excluded"} ${s.location === "elsewhere" ? "t2a-elsewhere" : ""}">
@@ -315,11 +325,12 @@ function renderEvidence(ctx: Context, s: Suggestion): string {
       }</div>`;
   const exclusion = s.excludedBy.length
     ? `<div><h3>Excluded because</h3>${s.excludedBy
-        .map((x) => `<p class="hint">${esc(ctx.countryNames.get(x.country) ?? x.country)} rule:</p>${matchList(x.matches)}`)
+        .map((x) => `<p class="hint">${esc(threatName(ctx, x.country))} rule:</p>${matchList(x.matches)}`)
         .join("")}</div>`
     : "";
+  const ransomware = s.ransomwareMatch ? `<div><h3>Ransomware</h3>${matchList([s.ransomwareMatch])}</div>` : "";
   return `<div class="t2a-evidence-grid">
-    <div><h3>Attribution</h3>${attribution}</div>
+    <div><h3>Attribution</h3>${attribution}</div>${ransomware}
     <div><h3>Sectors</h3>${targets}</div>${location}${exclusion}</div>
     <p class="hint"><a href="https://attack.mitre.org/groups/${g.id}/" target="_blank" rel="noopener">${g.id} on attack.mitre.org</a></p>`;
 }
@@ -436,6 +447,10 @@ function bind() {
     const box = e.target as HTMLInputElement;
     if (!box.dataset.country) return;
     profile().countries = toggle(profile().countries, box.dataset.country, box.checked);
+    update();
+  });
+  $("ransomware").addEventListener("change", (e) => {
+    profile().ransomware = (e.target as HTMLInputElement).checked;
     update();
   });
   $("exclusions").addEventListener("change", (e) => {

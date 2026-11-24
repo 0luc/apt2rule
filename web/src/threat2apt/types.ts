@@ -38,7 +38,7 @@ export interface Attribution {
 /** A curated list of synonyms for one region, sector or country that threat2apt searches for. */
 export interface TargetGroup {
   id: string;
-  kind: "region" | "sector" | "country";
+  kind: "region" | "sector" | "country" | "threat";
   label: string;
   terms: string[];
   /** Set for country target groups: hits inside another country's name don't count. */
@@ -55,13 +55,15 @@ export interface T2aProfile {
   name: string;
   /** Ticked country codes: groups attributed to one of them match on country. */
   countries: string[];
+  /** Ransomware as a threat: groups whose texts name ransomware or extortion match too, whatever their country. */
+  ransomware: boolean;
   /** Your area: ticked region and country target group IDs, e.g. "region:europe", "country:DE". */
   area: string[];
   /** Your sector: ticked sector target group IDs, e.g. "sector:government". */
   targets: string[];
   /** Extra terms, matched like sector terms. */
   customTerms: string[];
-  /** Per threat country code: target group IDs that drop its groups, e.g. { KP: ["sector:crypto"] }. */
+  /** Per threat (country code, or "ransomware"): target group IDs that drop its groups, e.g. { KP: ["sector:crypto"] }. */
   exclusions: Record<string, string[]>;
   /** With an area: hide groups whose texts only name places outside it. */
   hideElsewhere: boolean;
@@ -105,6 +107,7 @@ export type Location = "area" | "elsewhere" | "unknown";
 
 /** A threat country's exclusion rule that hit: the excluded target groups the group matched. */
 export interface Exclusion {
+  /** Country code, or "ransomware". */
   country: string;
   matches: TargetMatch[];
 }
@@ -114,6 +117,8 @@ export interface Suggestion {
   tier: Tier;
   /** Attributions whose country is ticked. */
   countryMatches: Attribution[];
+  /** With ransomware ticked: the ransomware and extortion terms its texts use. */
+  ransomwareMatch: TargetMatch | null;
   /** One entry per ticked sector (or custom term) that matched. */
   targetMatches: TargetMatch[];
   location: Location | null;
@@ -121,7 +126,10 @@ export interface Suggestion {
   locationMatches: TargetMatch[];
   /** Empty unless an exclusion rule drops the group. */
   excludedBy: Exclusion[];
-  /** Not excluded and, with an area, in it; without an area, tier 1. */
+  /**
+   * Not excluded, and: without an area, tier 1; with one, in your area (unless attributed only to countries you
+   * didn't tick), or a ransomware match naming no place (ransomware strikes anywhere).
+   */
   defaultPicked: boolean;
   picked: boolean;
 }
@@ -135,6 +143,8 @@ export interface GroupReason {
   attackVersion: string;
   tier: Tier;
   countries: { code: string; name: string; evidence: string; source: string }[];
+  /** Ransomware terms found, when ransomware was a threat. Absent in older reasons. */
+  ransomware?: string[];
   matched: { target: string; terms: string[] }[];
   /** Absent in reasons from before areas, and when no area was ticked. */
   location?: { status: Location; places: string[] };

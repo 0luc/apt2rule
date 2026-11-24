@@ -1,5 +1,5 @@
 import { findTerm, indexTexts, termWords, type IndexedText } from "./match";
-import { targetGroups } from "./targets";
+import { RANSOMWARE, targetGroups } from "./targets";
 import type {
   Attribution,
   Country,
@@ -17,6 +17,7 @@ import type {
 } from "./types";
 
 export type * from "./types";
+export { RANSOMWARE };
 
 /** Everything derived from the dataset once, independent of the profile. */
 export interface Context {
@@ -41,7 +42,7 @@ export function prepare(dataset: T2aDataset): Context {
     index: indexTexts(dataset.groups, dataset.countries),
     places: new Map(),
   };
-  const placeIds = targets.filter((t) => t.kind !== "sector").map((t) => t.id);
+  const placeIds = targets.filter((t) => t.kind === "region" || t.kind === "country").map((t) => t.id);
   for (const group of dataset.groups) {
     const own = ownCountries(group);
     ctx.places.set(group.id, matchGroup(ctx, group, placeIds, [], own).filter((m) => !own.has(m.target.replace(/^country:/, ""))));
@@ -116,19 +117,26 @@ export function suggest(ctx: Context, profile: T2aProfile): Suggestion[] {
   for (const group of ctx.dataset.groups) {
     if (!seenOk(group, profile)) continue;
     const countryMatches = group.attribution.filter((a) => countries.has(a.country));
+    const ransomwareMatch = profile.ransomware ? (matchGroup(ctx, group, [RANSOMWARE], [])[0] ?? null) : null;
     const targetMatches = matchGroup(ctx, group, profile.targets, profile.customTerms);
-    const tier = tierOf(countryMatches.length > 0, targetMatches.length > 0);
+    const threat = countryMatches.length > 0 || ransomwareMatch !== null;
+    const tier = tierOf(threat, targetMatches.length > 0);
     if (!tier || !tiers.has(tier)) continue;
     const places = ctx.places.get(group.id) ?? [];
     const inArea = places.filter((m) => area.has(m.target));
     const location: Location | null = !area.size ? null : inArea.length ? "area" : places.length ? "elsewhere" : "unknown";
     if (location === "elsewhere" && profile.hideElsewhere) continue;
-    const excludedBy = exclusionsFor(ctx, group, countryMatches, profile.exclusions);
-    const defaultPicked = !excludedBy.length && (location ? location === "area" : tier === 1);
+    const excludedBy = exclusionsFor(ctx, group, countryMatches, ransomwareMatch !== null, profile.exclusions);
+    // attributed, but only to countries the threat assessment doesn't name
+    const foreign = !threat && group.attribution.length > 0;
+    const defaultPicked =
+      !excludedBy.length &&
+      (!location ? tier === 1 : location === "area" ? !foreign : location === "unknown" && ransomwareMatch !== null);
     suggestions.push({
       group,
       tier,
       countryMatches,
+      ransomwareMatch,
       targetMatches,
       location,
       locationMatches: location === "elsewhere" ? places : inArea,
@@ -147,10 +155,18 @@ export function suggest(ctx: Context, profile: T2aProfile): Suggestion[] {
   );
 }
 
-/** The exclusion rules of the group's ticked countries that its texts match. */
-function exclusionsFor(ctx: Context, group: T2aGroup, countryMatches: Attribution[], exclusions: T2aProfile["exclusions"]): Exclusion[] {
+/** The exclusion rules of the group's threats (ticked countries, ransomware) that its texts match. */
+function exclusionsFor(
+  ctx: Context,
+  group: T2aGroup,
+  countryMatches: Attribution[],
+  ransomware: boolean,
+  exclusions: T2aProfile["exclusions"],
+): Exclusion[] {
   const out: Exclusion[] = [];
-  for (const country of new Set(countryMatches.map((a) => a.country))) {
+  const threats = new Set(countryMatches.map((a) => a.country));
+  if (ransomware) threats.add("ransomware");
+  for (const country of threats) {
     const ids = exclusions[country] ?? [];
     const matches = ids.length ? matchGroup(ctx, group, ids, [], ownCountries(group)) : [];
     if (matches.length) out.push({ country, matches });
@@ -215,6 +231,7 @@ export function reasonFor(ctx: Context, s: Suggestion, profile: T2aProfile, date
     attackVersion: ctx.dataset.attack.version,
     tier: s.tier,
     countries: s.countryMatches.map((a) => ({ code: a.country, name: ctx.countryNames.get(a.country) ?? a.country, evidence: a.evidence, source: a.source })),
+    ...(s.ransomwareMatch ? { ransomware: s.ransomwareMatch.terms } : {}),
     matched: s.targetMatches.map((m) => ({ target: m.label, terms: m.terms })),
     ...(s.location ? { location: { status: s.location, places: s.locationMatches.map((m) => m.label) } } : {}),
     lastSeen: s.group.lastSeen,
@@ -234,13 +251,14 @@ export function attributionLabel(ctx: Context, attribution: Attribution[]): stri
 
 /** The picked suggestions as a Markdown table and CSV, for the threat analysis report. */
 export function buildTable(ctx: Context, suggestions: Suggestion[]): { markdown: string; csv: string } {
-  const header = ["Group", "ATT&CK ID", "Tier", "Attributed to", "Attribution evidence", "Matched sectors", "Location", "Last seen"];
+  const header = ["Group", "ATT&CK ID", "Tier", "Attributed to", "Attribution evidence", "Ransomware", "Matched sectors", "Location", "Last seen"];
   const rows = suggestions.map((s) => [
     s.group.name,
     s.group.id,
     String(s.tier),
     attributionLabel(ctx, s.group.attribution),
     s.countryMatches.map((a) => `${a.evidence} (${a.source})`).join(" "),
+    s.ransomwareMatch?.terms.join(", ") ?? "",
     s.targetMatches.map((m) => `${m.label}: ${m.terms.join(", ")}`).join("; "),
     locationLabel(s),
     s.group.lastSeen ?? "unknown",
@@ -254,7 +272,7 @@ export function buildTable(ctx: Context, suggestions: Suggestion[]): { markdown:
 
 /** The tier names, as shown in the page and in reasons. */
 export const TIER_LABELS: Record<Tier, string> = {
-  1: "Tier 1: country and sector",
+  1: "Tier 1: threat and sector",
   2: "Tier 2: sector only",
-  3: "Tier 3: country only",
+  3: "Tier 3: threat only",
 };

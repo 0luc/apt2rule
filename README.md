@@ -16,11 +16,11 @@ Turn the APT groups from your threat analysis into tags on the matching Elastic 
 
 Not sure which groups to pick? **[threat2apt](https://0luc.github.io/apt2rule/threat2apt/)** suggests them:
 
-1. Tick the countries your threat assessment names, your area (for example Europe and your country) and your sector. Optionally exclude per country what you rule out, for example North Korea + Cryptocurrency.
-2. threat2apt reads every ATT&CK group and campaign description. Tier 1: attributed to a ticked country *and* targeting your sector. Tier 2: sector match only. Tier 3: country only. Groups that name a place in your area are ticked; groups that only name places elsewhere sink to the bottom. Each suggestion shows the sentences that prove it.
+1. Tick the threats your assessment names (countries, and optionally ransomware and extortion), your area (for example Europe and your country) and your sector. Optionally exclude per threat what you rule out, for example North Korea + Cryptocurrency.
+2. threat2apt reads every ATT&CK group and campaign description. Tier 1: a threat match (a ticked country, or ransomware) *and* your sector. Tier 2: sector match only. Tier 3: threat only. Groups that name a place in your area are ticked; groups that only name places elsewhere sink to the bottom. Each suggestion shows the sentences that prove it.
 3. Tick the groups you agree with and **Send to apt2rule**: they arrive with their reasons, which also appear in the coverage report. Or copy them as a Markdown or CSV table for your threat analysis.
 
-Attribution is read from description text (ATT&CK has no country field) and can be wrong or missing: check the evidence. See [ADR 0001](docs/adr/0001-threat2apt-group-suggestions.md) and [ADR 0002](docs/adr/0002-threat2apt-area-and-exclusions.md).
+Attribution is read from description text (ATT&CK has no country field) and can be wrong or missing: check the evidence. See [ADR 0001](docs/adr/0001-threat2apt-group-suggestions.md) , [ADR 0002](docs/adr/0002-threat2apt-area-and-exclusions.md) and [ADR 0003](docs/adr/0003-threat2apt-ransomware-and-tier-2.md).
 
 Everything runs in your browser. Profiles are stored in your browser's local storage and can be exported as JSON. apt2rule never connects to your cluster.
 

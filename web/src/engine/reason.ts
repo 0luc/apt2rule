@@ -21,6 +21,7 @@ export function describeReason(r: GroupReason | undefined): string {
   if (!r) return "manual";
   const parts = [`threat2apt tier ${r.tier}`];
   if (r.countries.length) parts.push(`attributed to ${r.countries.map((c) => c.name).join(", ")}`);
+  if (r.ransomware?.length) parts.push(`ransomware (${r.ransomware.join(", ")})`);
   if (r.matched.length) parts.push(`targets ${r.matched.map((m) => `${m.target} (${m.terms.join(", ")})`).join("; ")}`);
   if (r.location) {
     const places = r.location.places.join(", ");

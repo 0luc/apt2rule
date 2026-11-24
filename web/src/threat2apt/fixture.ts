@@ -45,6 +45,7 @@ export function fixtureT2a(): T2aDataset {
       group("G0004", "Nobody", "Nobody targeted Western governments and non-governmental organizations.", { lastSeen: "2025-02-02" }),
       group("G0005", "Islander", "Islander targeted Papua New Guinea and us in German banks."),
       group("G0006", "Quiet", "Quiet is a criminal group."),
+      group("G0008", "Locker", "Locker is a ransomware group that also runs extortion sites."),
       group("G0007", "Coin Thief", "Coin Thief is a North Korean group that steals cryptocurrency.", {
         attribution: [{ country: "KP", evidence: "Coin Thief is a North Korean group that steals cryptocurrency.", source: "G0007" }],
       }),

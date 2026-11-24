@@ -63,6 +63,13 @@ const SECTORS: [string, string, string[]][] = [
   ["retail", "Retail and hospitality", ["retail", "hospitality", "restaurant", "restaurants", "hotel", "hotels", "gaming"]],
 ];
 
+/**
+ * Ransomware and extortion: matched like a target group, but it counts as a threat, like a country.
+ * "Financially motivated" and "cybercriminal" are left out: they also cover bank fraud and North Korea's revenue groups.
+ */
+export const RANSOMWARE = "threat:ransomware";
+const RANSOMWARE_TERMS = ["ransomware", "ransomware-as-a-service", "RaaS", "extortion", "double extortion", "double-extortion"];
+
 /** Hits inside these phrases never count, whatever target group they belong to. */
 export const BLOCKING_PHRASES = ["non-governmental", "non-government", "nongovernmental"];
 
@@ -73,6 +80,7 @@ export function targetGroups(countries: Country[]): TargetGroup[] {
       return { id: `region:${id}`, kind: "region", label, terms, countries: codes.split(" ").filter((c) => known.has(c)) };
     }),
     ...SECTORS.map(([id, label, terms]): TargetGroup => ({ id: `sector:${id}`, kind: "sector", label, terms })),
+    { id: RANSOMWARE, kind: "threat", label: "Ransomware and extortion", terms: RANSOMWARE_TERMS },
     ...countries.map((c): TargetGroup => ({ id: `country:${c.code}`, kind: "country", label: c.name, terms: c.terms, country: c.code })),
   ];
 }
